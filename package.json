@@ -1,5 +1,5 @@
 {
-  "name": "audio-queue",
+  "name": "audio-channel-queue",
   "version": "1.0.0",
   "description": "Allows you to queue audio files to different playback channels.",
   "main": "dist/audio.js",

@@ -7,8 +7,8 @@ To preview this package and see how it works with visualized code examples, chec
 
 ## How To Install This Package:
 Install this package by running either of these commands:
-- For npm run `npm install _____ --save?` (for typescript run `npm install ____ ____--save`)
-- For yarn run `yarn add _____` (for typescript run `yarn add ____ ____`)
+- For npm run `npm install audio-channel-queue` (for typescript run `npm install audio-channel-queue @types/audio-channel-queue`)
+- For yarn run `yarn add audio-channel-queue` (for typescript run `yarn add audio-channel-queue @types/audio-channel-queue`)
 
 ### How To Use This Package:
 ```queueAudio(audioFileGoesHere);```
@@ -34,12 +34,12 @@ If you need to expose the queue array for logging or other purposes, it is avail
 `App.tsx`
 ```
 import redTeamWins from './audio/red_team_wins.mp3';
-import { queueAudio } from './queue-audio-package ____';
+import { queueAudio } from 'audio-channel-queue';
 
 function App(): JSX.Element {
 
   return (
-    <div>
+    <div className="App">
       <button onClick={()=> queueAudio(redTeamWins)}>Play sound</button>
     </div>
   )
