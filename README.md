@@ -3,7 +3,7 @@ The purpose of this package is to help queue audio files so they do not play on 
 
 This package offers TypeScript support 📘, boasts zero dependencies 🚫, and is released under the MIT license 📜. As an added bonus, it's NON-GMO 🌱 and 100% Free Range Organic 🐓.
 
-To preview this package and see how it works with visualized code examples, check out the demo that can be found here: [Audio Channel Queue Demo](https://tonycarpenter21.github.io/audio-queue-demo/). (A link to the demo repo can be found here:[Audio Channel Queue Demo Repo](https://github.com/tonycarpenter21/audio-queue-demo).)
+To preview this package and see how it works with visualized code examples, check out the demo that can be found here: [Audio Channel Queue Demo](https://tonycarpenter21.github.io/audio-queue-demo/). (A link to the demo repo can be found here: [Audio Channel Queue Demo Repo](https://github.com/tonycarpenter21/audio-queue-demo).)
 
 NPM package can be found [here](https://www.npmjs.com/package/audio-channel-queue).
 
