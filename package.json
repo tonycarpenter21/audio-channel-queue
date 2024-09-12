@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tonycarpenter21/audio-queue-package.git"
+    "url": "git+https://github.com/tonycarpenter21/audio-channel-queue.git"
   },
   "keywords": [
     "audio",

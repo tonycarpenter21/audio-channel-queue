@@ -6,9 +6,9 @@ You can also enqueue audio files to different queues. This allows you to play so
 To preview this package and see how it works with visualized code examples, check out the demo that can be found here: _____.
 
 ## How To Install This Package:
-Install this package by running either of these commands:
-- For npm run `npm install audio-channel-queue` (for typescript run `npm install audio-channel-queue @types/audio-channel-queue`)
-- For yarn run `yarn add audio-channel-queue` (for typescript run `yarn add audio-channel-queue @types/audio-channel-queue`)
+Install this package by running either of these commands (typescript packages are included automatically):
+- For npm run `npm install audio-channel-queue`
+- For yarn run `yarn add audio-channel-queue`
 
 ### How To Use This Package:
 ```queueAudio(audioFileGoesHere);```
