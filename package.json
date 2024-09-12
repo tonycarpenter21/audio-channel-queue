@@ -1,0 +1,31 @@
+{
+  "name": "audio-queue",
+  "version": "1.0.0",
+  "description": "Allows you to queue audio files to different playback channels.",
+  "main": "dist/audio.js",
+  "types": "dist/audio.d.ts",
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tonycarpenter21/audio-queue-package.git"
+  },
+  "keywords": [
+    "audio",
+    "queue",
+    "channel",
+    "no dependencies"
+  ],
+  "author": "Tony Carpenter",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tonycarpenter21/audio-queue-package/issues"
+  },
+  "homepage": "https://github.com/tonycarpenter21/audio-queue-package#readme",
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}
