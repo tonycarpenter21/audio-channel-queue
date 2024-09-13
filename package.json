@@ -1,6 +1,6 @@
 {
   "name": "audio-channel-queue",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Allows you to queue audio files to different playback channels.",
   "main": "dist/audio.js",
   "types": "dist/audio.d.ts",
