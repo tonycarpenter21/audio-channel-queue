@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.queueAudio = exports.audioChannels = void 0;
+exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.playAudioQueue = exports.queueAudio = exports.audioChannels = void 0;
 exports.audioChannels = [];
 const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...args_1], void 0, function* (audioUrl, channelNumber = 0) {
     if (!exports.audioChannels[channelNumber]) {
@@ -18,7 +18,7 @@ const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...
     const audio = new Audio(audioUrl);
     exports.audioChannels[channelNumber].queue.push(audio);
     if (exports.audioChannels[channelNumber].queue.length === 1) {
-        return playAudioQueue(channelNumber);
+        return (0, exports.playAudioQueue)(channelNumber);
     }
 });
 exports.queueAudio = queueAudio;
@@ -30,19 +30,20 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
     return new Promise((resolve) => {
         currentAudio.addEventListener('ended', () => __awaiter(void 0, void 0, void 0, function* () {
             channel.queue.shift();
-            yield playAudioQueue(channelNumber);
+            yield (0, exports.playAudioQueue)(channelNumber);
             resolve();
         }));
         currentAudio.play();
     });
 });
+exports.playAudioQueue = playAudioQueue;
 const stopCurrentAudioInChannel = (channelNumber = 0) => {
     const channel = exports.audioChannels[channelNumber];
     if (channel && channel.queue.length > 0) {
         const currentAudio = channel.queue[0];
         currentAudio.pause();
         channel.queue.shift();
-        playAudioQueue(channelNumber);
+        (0, exports.playAudioQueue)(channelNumber);
     }
 };
 exports.stopCurrentAudioInChannel = stopCurrentAudioInChannel;

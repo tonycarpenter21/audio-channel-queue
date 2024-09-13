@@ -1,4 +1,4 @@
-# Audio Queue Package
+# Audio Channel Queue
 The purpose of this package is to help queue audio files so they do not play on top of each other. You can also enqueue audio files to different queues. This allows you to play sounds concurrently, but not have them overlap in their given audio queue.
 
 This package offers TypeScript support 📘, boasts zero dependencies 🚫, and is released under the MIT license 📜. As an added bonus, it's NON-GMO 🌱 and 100% Free Range Organic 🐓.

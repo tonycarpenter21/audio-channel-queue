@@ -19,7 +19,7 @@ export const queueAudio = async (audioUrl: string, channelNumber: number = 0): P
   }
 };
 
-const playAudioQueue = async (channelNumber: number): Promise<void> => {
+export const playAudioQueue = async (channelNumber: number): Promise<void> => {
   const channel: AudioQueueChannel = audioChannels[channelNumber];
 
   if (channel.queue.length === 0) return;
