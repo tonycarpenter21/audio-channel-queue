@@ -1,0 +1,56 @@
+# Cursor Rules for audio-channel-queue
+
+## Project Overview
+This is a TypeScript npm package for audio queue management with real-time progress tracking and event handling.
+
+## Code Standards
+- Use TypeScript with strict mode enabled
+- All public functions must have comprehensive JSDoc documentation with examples
+- All variables and functions should show a return type
+- Object keys and imports should be alphabetically sorted
+- Interfaces and types should be alphabetically sorted
+- CSS rules should be alphabetically sorted
+- CSS styling should be accomplished with as few rules as possible
+- Use modular architecture - keep concerns separated across files
+- Return all time values in milliseconds for consistency
+- Use consistent error handling with try/catch blocks
+- Export interfaces and types from src/types.ts
+
+## File Organization
+- src/types.ts - All TypeScript interfaces and type definitions
+- src/core.ts - Core queue management functions
+- src/info.ts - Audio information and progress tracking
+- src/events.ts - Event handling and emission logic
+- src/utils.ts - Helper functions and utilities
+- src/index.ts - Main entry point with organized exports
+
+## Testing Guidelines
+- Write comprehensive tests for all new functionality
+- Use Jest with jsdom environment for HTMLAudioElement testing
+- Maintain 80%+ code coverage
+- Include both positive and negative test cases
+- Test error handling and edge cases
+
+## Documentation
+- Update CHANGELOG.md for all changes following semantic versioning
+- Keep README.md examples current and functional
+- Include migration guides for breaking changes
+- Use JSDoc @example tags with realistic usage scenarios
+- For JSDocs fileoverview don't put in the author or version number
+
+## Naming Conventions
+- Use camelCase for functions and variables
+- Use PascalCase for interfaces and types
+- Use descriptive names that clearly indicate purpose
+- Prefix callback types with the event name (e.g., ProgressCallback)
+
+## Dependencies
+- Minimize external dependencies
+- Justify any new dependencies in commit messages
+- Prefer native JavaScript/TypeScript solutions when possible
+
+## Backwards Compatibility
+- Maintain existing public API contracts
+- Add new features as optional parameters with defaults
+- Provide migration guides for any breaking changes
+- Test against existing usage patterns 

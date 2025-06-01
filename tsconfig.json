@@ -5,8 +5,11 @@
     "declaration": true,
     "outDir": "./dist",
     "strict": true,
-    "types": ["jest", "node"]
+    "types": ["jest", "node"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": ["audio.ts"],
-  "exclude": ["node_modules", "**/__tests__/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/__tests__/*", "dist", "audio.ts"]
 }
