@@ -46,8 +46,8 @@ export declare const playAudioQueue: (channelNumber: number) => Promise<void>;
  * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * await stopCurrentAudioInChannel(0); // Stop current audio in channel 0
- * await stopCurrentAudioInChannel(); // Stop current audio in default channel
+ * await stopCurrentAudioInChannel(); // Stop current audio in default channel (0)
+ * await stopCurrentAudioInChannel(1); // Stop current audio in channel 1
  * ```
  */
 export declare const stopCurrentAudioInChannel: (channelNumber?: number) => Promise<void>;
@@ -56,8 +56,8 @@ export declare const stopCurrentAudioInChannel: (channelNumber?: number) => Prom
  * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * await stopAllAudioInChannel(0); // Clear all audio in channel 0
- * await stopAllAudioInChannel(); // Clear all audio in default channel
+ * await stopAllAudioInChannel(); // Clear all audio in default channel (0)
+ * await stopAllAudioInChannel(1); // Clear all audio in channel 1
  * ```
  */
 export declare const stopAllAudioInChannel: (channelNumber?: number) => Promise<void>;

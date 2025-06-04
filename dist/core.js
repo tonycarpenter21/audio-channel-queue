@@ -197,8 +197,8 @@ exports.playAudioQueue = playAudioQueue;
  * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * await stopCurrentAudioInChannel(0); // Stop current audio in channel 0
- * await stopCurrentAudioInChannel(); // Stop current audio in default channel
+ * await stopCurrentAudioInChannel(); // Stop current audio in default channel (0)
+ * await stopCurrentAudioInChannel(1); // Stop current audio in channel 1
  * ```
  */
 const stopCurrentAudioInChannel = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (channelNumber = 0) {
@@ -228,8 +228,8 @@ exports.stopCurrentAudioInChannel = stopCurrentAudioInChannel;
  * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * await stopAllAudioInChannel(0); // Clear all audio in channel 0
- * await stopAllAudioInChannel(); // Clear all audio in default channel
+ * await stopAllAudioInChannel(); // Clear all audio in default channel (0)
+ * await stopAllAudioInChannel(1); // Clear all audio in channel 1
  * ```
  */
 const stopAllAudioInChannel = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (channelNumber = 0) {
