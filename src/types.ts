@@ -15,6 +15,38 @@ export type AudioQueueChannel = {
 }
 
 /**
+ * Volume ducking configuration for channels
+ */
+export interface VolumeConfig {
+  /** The channel number that should have priority */
+  priorityChannel: number;
+  /** Volume level for the priority channel (0-1) */
+  priorityVolume: number;
+  /** Volume level for all other channels when priority channel is active (0-1) */
+  duckingVolume: number;
+  /** Duration in milliseconds for volume duck transition (defaults to 250ms) */
+  duckTransitionDuration?: number;
+  /** Duration in milliseconds for volume restore transition (defaults to 500ms) */
+  restoreTransitionDuration?: number;
+  /** Easing function for volume transitions (defaults to 'ease-out') */
+  transitionEasing?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+}
+
+/**
+ * Audio file configuration for queueing
+ */
+export interface AudioQueueOptions {
+  /** Whether to add the audio to the front of the queue (defaults to false) */
+  addToFront?: boolean;
+  /** Whether the audio should loop when it finishes */
+  loop?: boolean;
+  /** Whether to add the audio with priority (same as addToFront) */
+  priority?: boolean;
+  /** Volume level for this specific audio file (0-1, defaults to channel volume) */
+  volume?: number;
+}
+
+/**
  * Comprehensive audio information interface providing metadata about currently playing audio
  */
 export interface AudioInfo {
@@ -24,12 +56,20 @@ export interface AudioInfo {
   duration: number;
   /** Extracted filename from the source URL */
   fileName: string;
+  /** Whether the audio is set to loop */
+  isLooping: boolean;
+  /** Whether the audio is currently paused */
+  isPaused: boolean;
   /** Whether the audio is currently playing */
   isPlaying: boolean;
   /** Playback progress as a decimal (0-1) */
   progress: number;
+  /** Number of audio files remaining in the queue after current */
+  remainingInQueue: number;
   /** Audio file source URL */
   src: string;
+  /** Current volume level (0-1) */
+  volume: number;
 }
 
 /**
@@ -70,8 +110,12 @@ export interface QueueItem {
   fileName: string;
   /** Whether this item is currently playing */
   isCurrentlyPlaying: boolean;
+  /** Whether this item is set to loop */
+  isLooping: boolean;
   /** Audio file source URL */
   src: string;
+  /** Volume level for this item (0-1) */
+  volume: number;
 }
 
 /**
@@ -82,10 +126,14 @@ export interface QueueSnapshot {
   channelNumber: number;
   /** Zero-based index of the currently playing item */
   currentIndex: number;
+  /** Whether the current audio is paused */
+  isPaused: boolean;
   /** Array of audio items in the queue with their metadata */
   items: QueueItem[];
   /** Total number of items in the queue */
   totalItems: number;
+  /** Current volume level for the channel (0-1) */
+  volume: number;
 }
 
 /**
@@ -113,15 +161,39 @@ export type AudioStartCallback = (audioInfo: AudioStartInfo) => void;
 export type AudioCompleteCallback = (audioInfo: AudioCompleteInfo) => void;
 
 /**
- * Extended audio queue channel with event callback management
+ * Callback function type for audio pause notifications
+ * @param channelNumber Channel that was paused
+ * @param audioInfo Information about the audio that was paused
+ */
+export type AudioPauseCallback = (channelNumber: number, audioInfo: AudioInfo) => void;
+
+/**
+ * Callback function type for audio resume notifications
+ * @param channelNumber Channel that was resumed
+ * @param audioInfo Information about the audio that was resumed
+ */
+export type AudioResumeCallback = (channelNumber: number, audioInfo: AudioInfo) => void;
+
+/**
+ * Extended audio queue channel with event callback management and additional features
  */
 export type ExtendedAudioQueueChannel = AudioQueueChannel & {
   /** Set of callbacks for audio completion events */
   audioCompleteCallbacks?: Set<AudioCompleteCallback>;
+  /** Set of callbacks for audio pause events */
+  audioPauseCallbacks?: Set<AudioPauseCallback>;
+  /** Set of callbacks for audio resume events */
+  audioResumeCallbacks?: Set<AudioResumeCallback>;
   /** Set of callbacks for audio start events */
   audioStartCallbacks?: Set<AudioStartCallback>;
+  /** Whether the current audio in this channel is paused */
+  isPaused?: boolean;
   /** Map of audio elements to their progress callback sets */
   progressCallbacks?: Map<HTMLAudioElement, Set<ProgressCallback>>;
   /** Set of callbacks for queue change events */
   queueChangeCallbacks?: Set<QueueChangeCallback>;
+  /** Current volume level for this channel (0-1) */
+  volume?: number;
+  /** Volume ducking configuration for this channel */
+  volumeConfig?: VolumeConfig;
 } 

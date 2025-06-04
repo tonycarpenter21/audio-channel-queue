@@ -2,6 +2,93 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2025-01-16
+
+### Added - Major Feature Expansion 🚀
+- **⏯️ Pause/Resume System**: Complete playback control for individual channels and all channels
+  - `pauseChannel(channelNumber)` - Pause specific channel
+  - `resumeChannel(channelNumber)` - Resume specific channel  
+  - `togglePauseChannel(channelNumber)` - Toggle pause state
+  - `pauseAllChannels()` - Emergency pause everything
+  - `resumeAllChannels()` - Resume everything that was paused
+  - `isChannelPaused(channelNumber)` - Check pause state
+  - `getAllChannelsPauseState()` - Get all channel pause states
+
+- **🔊 Volume Control with Ducking**: Dynamic volume management and automatic background audio reduction
+  - `setChannelVolume(channelNumber, volume)` - Per-channel volume control (0-1 range)
+  - `getChannelVolume(channelNumber)` - Get current channel volume
+  - `setAllChannelsVolume(volume)` - Set all channels to same volume
+  - `getAllChannelsVolume()` - Get all channel volumes
+  - `setVolumeDucking(config)` - Auto-reduce background audio when priority audio plays
+  - `clearVolumeDucking()` - Remove ducking configuration
+  - `applyVolumeDucking()` and `restoreVolumeLevels()` - Manual ducking control
+  - **Smooth volume transitions** with configurable easing (linear, ease-in, ease-out, ease-in-out)
+  - **Advanced ducking configuration** with separate transition durations for duck and restore
+
+- **🔄 Audio Looping**: Seamless audio looping for background music and ambient sounds
+  - `queueAudio(url, channel, { loop: true })` - Enable looping for any audio
+  - Enhanced `AudioInfo` interface with `isLooping` property
+  - Perfect for background music, ambient sounds, and continuous audio
+
+- **⚡ Priority Queueing**: Add urgent audio to the front of any queue
+  - `queueAudioPriority(audioUrl, channelNumber, options)` - Dedicated priority function
+  - `queueAudio(url, channel, { priority: true })` - Alternative priority syntax
+  - Plays after current audio finishes (user-friendly, non-interrupting)
+
+- **📊 Enhanced Audio Information**: Comprehensive audio metadata and state tracking
+  - Updated `AudioInfo` interface with `isPaused`, `isLooping`, `volume` properties
+  - Enhanced `QueueSnapshot` interface with pause state and volume information
+  - New event callbacks: `onAudioPause(channelNumber, callback)`, `onAudioResume(channelNumber, callback)`
+  - Real-time pause/resume state tracking across all channels
+
+- **🎛️ Advanced Options System**: Flexible audio configuration
+  - `AudioQueueOptions` interface supporting `loop`, `volume`, `priority`, `addToFront`
+  - Volume options with automatic clamping (0-1 range) and NaN handling
+  - Channel volume inheritance and per-audio volume overrides
+
+### Added - New Module Structure
+- **`src/pause.ts`** - Complete pause/resume functionality with state management
+- **`src/volume.ts`** - Volume control, ducking, and smooth transitions
+- **Enhanced `src/core.ts`** - AudioQueueOptions support, priority queueing, async stop functions
+- **Enhanced `src/events.ts`** - Added pause/resume event emission
+- **Enhanced `src/info.ts`** - Pause/resume event subscriptions
+- **Enhanced `src/types.ts`** - New interfaces for volume config, audio options, pause callbacks
+
+### Added - Comprehensive Testing
+- **155 total tests** across all functionality (100% pass rate)
+- **`__tests__/pause.test.ts`** - Complete pause/resume functionality testing (334 lines)
+- **`__tests__/volume.test.ts`** - Volume control and ducking tests (474 lines)
+- **`__tests__/core-enhancements.test.ts`** - Looping, priority queueing, options integration (388 lines)
+- **Enhanced test utilities** with async waiting, floating-point comparisons, and proper mock management
+- **Comprehensive edge case coverage** including error handling, state management, and integration scenarios
+
+### Changed
+- **All stop functions now async** (`stopCurrentAudioInChannel`, `stopAllAudioInChannel`, `stopAllAudio`) to support volume restoration
+- **Enhanced channel structure** with pause state tracking and volume configuration
+- **Improved MockAudioElement** in tests with proper lifecycle management and event simulation
+- **Enhanced error handling** with graceful NaN volume handling and robust state management
+- **README.md completely updated** with comprehensive examples for gaming, podcast, educational apps
+- **Feature count expanded** from 8 to 16 total package features
+
+### Fixed
+- **Async timing issues** in tests with proper promise handling and event synchronization
+- **Volume precision issues** with floating-point comparison utilities
+- **Test reliability** with enhanced mock setup and cleanup procedures
+- **Memory management** with proper event listener cleanup and state reset
+
+### Technical Improvements
+- **Smooth volume transitions** with configurable duration and easing functions
+- **Modular volume ducking** with priority channel detection and automatic restoration
+- **Non-blocking audio playback** to prevent test timeouts and improve responsiveness
+- **Enhanced JSDoc documentation** with realistic usage examples for all new functions
+- **Backward compatibility maintained** - all existing APIs continue to work without changes
+
+### Examples Added
+- **Gaming audio system** with background music, sound effects, and voice chat ducking
+- **Radio/podcast app** with main content, commercial breaks, and ambient background
+- **Educational app** with lessons, study music, and interactive feedback
+- **React component examples** demonstrating real-time audio info display and control interfaces
+
 ## [1.5.0] - 2025-06-01
 
 ### Added

@@ -3,7 +3,7 @@
  * @fileoverview Audio information and progress tracking functions for the audio-channel-queue package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.offAudioProgress = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = void 0;
+exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports.onAudioPause = exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.offAudioProgress = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = void 0;
 const utils_1 = require("./utils");
 const events_1 = require("./events");
 /**
@@ -29,7 +29,7 @@ const getCurrentAudioInfo = (channelNumber = 0) => {
         return null;
     }
     const currentAudio = channel.queue[0];
-    return (0, utils_1.getAudioInfoFromElement)(currentAudio);
+    return (0, utils_1.getAudioInfoFromElement)(currentAudio, channelNumber, exports.audioChannels);
 };
 exports.getCurrentAudioInfo = getCurrentAudioInfo;
 /**
@@ -86,10 +86,14 @@ const onAudioProgress = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioPauseCallbacks: new Set(),
+            audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
+            isPaused: false,
             progressCallbacks: new Map(),
             queue: [],
-            queueChangeCallbacks: new Set()
+            queueChangeCallbacks: new Set(),
+            volume: 1.0
         };
     }
     const channel = exports.audioChannels[channelNumber];
@@ -150,10 +154,14 @@ const onQueueChange = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioPauseCallbacks: new Set(),
+            audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
+            isPaused: false,
             progressCallbacks: new Map(),
             queue: [],
-            queueChangeCallbacks: new Set()
+            queueChangeCallbacks: new Set(),
+            volume: 1.0
         };
     }
     const channel = exports.audioChannels[channelNumber];
@@ -194,10 +202,14 @@ const onAudioStart = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioPauseCallbacks: new Set(),
+            audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
+            isPaused: false,
             progressCallbacks: new Map(),
             queue: [],
-            queueChangeCallbacks: new Set()
+            queueChangeCallbacks: new Set(),
+            volume: 1.0
         };
     }
     const channel = exports.audioChannels[channelNumber];
@@ -225,10 +237,14 @@ const onAudioComplete = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioPauseCallbacks: new Set(),
+            audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
+            isPaused: false,
             progressCallbacks: new Map(),
             queue: [],
-            queueChangeCallbacks: new Set()
+            queueChangeCallbacks: new Set(),
+            volume: 1.0
         };
     }
     const channel = exports.audioChannels[channelNumber];
@@ -238,3 +254,99 @@ const onAudioComplete = (channelNumber, callback) => {
     channel.audioCompleteCallbacks.add(callback);
 };
 exports.onAudioComplete = onAudioComplete;
+/**
+ * Subscribes to audio pause events for a specific channel
+ * @param channelNumber - The channel number to monitor
+ * @param callback - Function to call when audio is paused
+ * @example
+ * ```typescript
+ * onAudioPause(0, (channelNumber, info) => {
+ *   showPauseIndicator();
+ *   logPauseEvent(info.fileName, info.currentTime);
+ * });
+ * ```
+ */
+const onAudioPause = (channelNumber, callback) => {
+    if (!exports.audioChannels[channelNumber]) {
+        exports.audioChannels[channelNumber] = {
+            audioCompleteCallbacks: new Set(),
+            audioPauseCallbacks: new Set(),
+            audioResumeCallbacks: new Set(),
+            audioStartCallbacks: new Set(),
+            isPaused: false,
+            progressCallbacks: new Map(),
+            queue: [],
+            queueChangeCallbacks: new Set(),
+            volume: 1.0
+        };
+    }
+    const channel = exports.audioChannels[channelNumber];
+    if (!channel.audioPauseCallbacks) {
+        channel.audioPauseCallbacks = new Set();
+    }
+    channel.audioPauseCallbacks.add(callback);
+};
+exports.onAudioPause = onAudioPause;
+/**
+ * Subscribes to audio resume events for a specific channel
+ * @param channelNumber - The channel number to monitor
+ * @param callback - Function to call when audio is resumed
+ * @example
+ * ```typescript
+ * onAudioResume(0, (channelNumber, info) => {
+ *   hidePauseIndicator();
+ *   logResumeEvent(info.fileName, info.currentTime);
+ * });
+ * ```
+ */
+const onAudioResume = (channelNumber, callback) => {
+    if (!exports.audioChannels[channelNumber]) {
+        exports.audioChannels[channelNumber] = {
+            audioCompleteCallbacks: new Set(),
+            audioPauseCallbacks: new Set(),
+            audioResumeCallbacks: new Set(),
+            audioStartCallbacks: new Set(),
+            isPaused: false,
+            progressCallbacks: new Map(),
+            queue: [],
+            queueChangeCallbacks: new Set(),
+            volume: 1.0
+        };
+    }
+    const channel = exports.audioChannels[channelNumber];
+    if (!channel.audioResumeCallbacks) {
+        channel.audioResumeCallbacks = new Set();
+    }
+    channel.audioResumeCallbacks.add(callback);
+};
+exports.onAudioResume = onAudioResume;
+/**
+ * Removes pause event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioPause(0); // Stop receiving pause notifications for channel 0
+ * ```
+ */
+const offAudioPause = (channelNumber) => {
+    const channel = exports.audioChannels[channelNumber];
+    if (!channel || !channel.audioPauseCallbacks)
+        return;
+    channel.audioPauseCallbacks.clear();
+};
+exports.offAudioPause = offAudioPause;
+/**
+ * Removes resume event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioResume(0); // Stop receiving resume notifications for channel 0
+ * ```
+ */
+const offAudioResume = (channelNumber) => {
+    const channel = exports.audioChannels[channelNumber];
+    if (!channel || !channel.audioResumeCallbacks)
+        return;
+    channel.audioResumeCallbacks.clear();
+};
+exports.offAudioResume = offAudioResume;

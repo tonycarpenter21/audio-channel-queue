@@ -33,28 +33,44 @@ exports.extractFileName = extractFileName;
 /**
  * Extracts comprehensive audio information from an HTMLAudioElement
  * @param audio - The HTML audio element to extract information from
+ * @param channelNumber - Optional channel number to include remaining queue info
+ * @param audioChannels - Optional audio channels array to calculate remainingInQueue
  * @returns AudioInfo object with current playback state or null if audio is invalid
  * @example
  * ```typescript
  * const audioElement = new Audio('song.mp3');
  * const info = getAudioInfoFromElement(audioElement);
  * console.log(info?.progress); // Current progress as decimal (0-1)
+ *
+ * // With channel context for remainingInQueue
+ * const infoWithQueue = getAudioInfoFromElement(audioElement, 0, audioChannels);
+ * console.log(infoWithQueue?.remainingInQueue); // Number of items left in queue
  * ```
  */
-const getAudioInfoFromElement = (audio) => {
+const getAudioInfoFromElement = (audio, channelNumber, audioChannels) => {
     if (!audio)
         return null;
     const duration = isNaN(audio.duration) ? 0 : audio.duration * 1000; // Convert to milliseconds
     const currentTime = isNaN(audio.currentTime) ? 0 : audio.currentTime * 1000; // Convert to milliseconds
     const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
     const isPlaying = !audio.paused && !audio.ended && audio.readyState > 2;
+    // Calculate remainingInQueue if channel context is provided
+    let remainingInQueue = 0;
+    if (channelNumber !== undefined && audioChannels && audioChannels[channelNumber]) {
+        const channel = audioChannels[channelNumber];
+        remainingInQueue = Math.max(0, channel.queue.length - 1); // Exclude current playing audio
+    }
     return {
         currentTime,
         duration,
         fileName: (0, exports.extractFileName)(audio.src),
+        isLooping: audio.loop,
+        isPaused: audio.paused && !audio.ended,
         isPlaying,
         progress,
-        src: audio.src
+        remainingInQueue,
+        src: audio.src,
+        volume: audio.volume
     };
 };
 exports.getAudioInfoFromElement = getAudioInfoFromElement;
@@ -77,13 +93,17 @@ const createQueueSnapshot = (channelNumber, audioChannels) => {
         duration: isNaN(audio.duration) ? 0 : audio.duration * 1000,
         fileName: (0, exports.extractFileName)(audio.src),
         isCurrentlyPlaying: index === 0 && !audio.paused && !audio.ended,
-        src: audio.src
+        isLooping: audio.loop,
+        src: audio.src,
+        volume: audio.volume
     }));
     return {
         channelNumber,
         currentIndex: 0, // Current playing is always index 0 in our queue structure
+        isPaused: channel.isPaused || false,
         items,
-        totalItems: channel.queue.length
+        totalItems: channel.queue.length,
+        volume: channel.volume || 1.0
     };
 };
 exports.createQueueSnapshot = createQueueSnapshot;

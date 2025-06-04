@@ -62,9 +62,13 @@ describe('Audio Information Functions', () => {
         currentTime: 60000, // Converted to milliseconds
         duration: 180000, // Converted to milliseconds
         fileName: 'test-song.mp3',
+        isLooping: false,
+        isPaused: false,
         isPlaying: true,
-        progress: 1/3, // 60/180
-        src: 'test-song.mp3'
+        progress: 0.3333333333333333,
+        remainingInQueue: 0,
+        src: 'test-song.mp3',
+        volume: 1
       });
     });
 
@@ -145,27 +149,35 @@ describe('Audio Information Functions', () => {
       expect(snapshot).toEqual({
         channelNumber: 0,
         currentIndex: 0,
-        totalItems: 3,
+        isPaused: false,
         items: [
           {
             duration: 180000,
             fileName: 'song1.mp3',
             isCurrentlyPlaying: true,
-            src: 'song1.mp3'
+            isLooping: false,
+            src: 'song1.mp3',
+            volume: 1.0
           },
           {
             duration: 240000,
             fileName: 'song2.mp3',
             isCurrentlyPlaying: false,
-            src: 'song2.mp3'
+            isLooping: false,
+            src: 'song2.mp3',
+            volume: 1.0
           },
           {
             duration: 200000,
             fileName: 'song3.mp3',
             isCurrentlyPlaying: false,
-            src: 'song3.mp3'
+            isLooping: false,
+            src: 'song3.mp3',
+            volume: 1.0
           }
-        ]
+        ],
+        totalItems: 3,
+        volume: 1.0
       });
     });
 
@@ -183,8 +195,10 @@ describe('Audio Information Functions', () => {
       expect(snapshot).toEqual({
         channelNumber: 0,
         currentIndex: 0,
+        isPaused: false,
+        items: [],
         totalItems: 0,
-        items: []
+        volume: 1.0
       });
     });
   });
@@ -313,8 +327,8 @@ describe('Audio Lifecycle Events', () => {
       
       await queueAudio('test-song.mp3');
       
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      mockAudio.simulateLoadedMetadata();
+      // Wait for async playback to start - this should trigger both events
+      await waitForPromises(50);
       
       expect(callback).toHaveBeenCalled();
       const startInfo = callback.mock.calls[0][0];

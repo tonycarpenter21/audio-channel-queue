@@ -3,7 +3,7 @@
  * @fileoverview Event handling and emission for the audio-channel-queue package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupProgressTracking = exports.setupProgressTracking = exports.emitAudioComplete = exports.emitAudioStart = exports.emitQueueChange = void 0;
+exports.cleanupProgressTracking = exports.setupProgressTracking = exports.emitAudioResume = exports.emitAudioPause = exports.emitAudioComplete = exports.emitAudioStart = exports.emitQueueChange = void 0;
 const utils_1 = require("./utils");
 /**
  * Emits a queue change event to all registered listeners for a specific channel
@@ -79,6 +79,54 @@ const emitAudioComplete = (channelNumber, audioInfo, audioChannels) => {
     });
 };
 exports.emitAudioComplete = emitAudioComplete;
+/**
+ * Emits an audio pause event to all registered listeners for a specific channel
+ * @param channelNumber - The channel number where audio was paused
+ * @param audioInfo - Information about the audio that was paused
+ * @param audioChannels - Array of audio channels
+ * @example
+ * ```typescript
+ * emitAudioPause(0, audioInfo, audioChannels);
+ * ```
+ */
+const emitAudioPause = (channelNumber, audioInfo, audioChannels) => {
+    const channel = audioChannels[channelNumber];
+    if (!channel || !channel.audioPauseCallbacks)
+        return;
+    channel.audioPauseCallbacks.forEach(callback => {
+        try {
+            callback(channelNumber, audioInfo);
+        }
+        catch (error) {
+            console.error('Error in audio pause callback:', error);
+        }
+    });
+};
+exports.emitAudioPause = emitAudioPause;
+/**
+ * Emits an audio resume event to all registered listeners for a specific channel
+ * @param channelNumber - The channel number where audio was resumed
+ * @param audioInfo - Information about the audio that was resumed
+ * @param audioChannels - Array of audio channels
+ * @example
+ * ```typescript
+ * emitAudioResume(0, audioInfo, audioChannels);
+ * ```
+ */
+const emitAudioResume = (channelNumber, audioInfo, audioChannels) => {
+    const channel = audioChannels[channelNumber];
+    if (!channel || !channel.audioResumeCallbacks)
+        return;
+    channel.audioResumeCallbacks.forEach(callback => {
+        try {
+            callback(channelNumber, audioInfo);
+        }
+        catch (error) {
+            console.error('Error in audio resume callback:', error);
+        }
+    });
+};
+exports.emitAudioResume = emitAudioResume;
 // Store listener functions for cleanup
 const progressListeners = new WeakMap();
 /**
@@ -111,7 +159,7 @@ const setupProgressTracking = (audio, channelNumber, audioChannels) => {
         const allCallbacks = new Set([...audioCallbacks, ...channelCallbacks]);
         if (allCallbacks.size === 0)
             return;
-        const info = (0, utils_1.getAudioInfoFromElement)(audio);
+        const info = (0, utils_1.getAudioInfoFromElement)(audio, channelNumber, audioChannels);
         if (info) {
             allCallbacks.forEach((callback) => {
                 try {

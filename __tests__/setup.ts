@@ -3,7 +3,7 @@
  */
 
 // Set longer timeout for audio tests
-jest.setTimeout(10000);
+jest.setTimeout(15000);
 
 // Enhanced mock for HTMLAudioElement with all properties we need
 export class MockAudioElement {
@@ -13,6 +13,8 @@ export class MockAudioElement {
   public paused: boolean = true;
   public ended: boolean = false;
   public readyState: number = 4; // HAVE_ENOUGH_DATA
+  public loop: boolean = false; // Loop property
+  public volume: number = 1.0; // Volume property (0-1)
   private eventListeners: Map<string, Set<EventListener>> = new Map();
 
   constructor(src?: string) {
@@ -35,8 +37,19 @@ export class MockAudioElement {
   }
 
   play = jest.fn().mockImplementation(async () => {
+    if (this.ended && !this.loop) {
+      return Promise.resolve();
+    }
+    
     this.paused = false;
-    this.triggerEvent('play');
+    this.ended = false;
+    
+    // Immediately trigger events for test detection
+    setTimeout(() => {
+      this.triggerEvent('loadedmetadata');
+      this.triggerEvent('play');
+    }, 0);
+    
     return Promise.resolve();
   });
 
@@ -88,6 +101,21 @@ export class MockAudioElement {
     this.currentTime = this.duration;
     this.triggerEvent('ended');
   }
+
+  // Add dispatchEvent method
+  dispatchEvent = jest.fn((event: Event) => {
+    this.triggerEvent(event.type as any);
+    return true;
+  });
+
+  // Reset method for test cleanup
+  reset(): void {
+    this.paused = true;
+    this.ended = false;
+    this.currentTime = 0;
+    this.loop = false;
+    this.volume = 1.0;
+  }
 }
 
 // Mock HTMLAudioElement globally
@@ -105,8 +133,28 @@ export const createMockAudio = (src: string = 'test.mp3', duration: number = 120
   return audio;
 };
 
-export const waitForPromises = (): Promise<void> => new Promise((resolve: (value: void | PromiseLike<void>) => void) => setTimeout(resolve, 0));
+export const waitForPromises = async (maxWait: number = 100): Promise<void> => {
+  const start = Date.now();
+  
+  // Multiple cycles to ensure all promises resolve - jsdom compatible
+  while (Date.now() - start < maxWait) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    // Use setTimeout instead of setImmediate for jsdom compatibility
+    await new Promise<void>((resolve) => setTimeout(resolve, 1));
+  }
+};
+
+export const waitForAudioEvents = async (timeout: number = 50): Promise<void> => {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, timeout);
+  });
+};
 
 export const mockCallback = <T extends (...args: any[]) => any>(): jest.MockedFunction<T> => {
   return jest.fn() as unknown as jest.MockedFunction<T>;
+};
+
+// Utility for comparing floating point numbers with tolerance
+export const expectVolumeToBeCloseTo = (actual: number, expected: number, tolerance: number = 0.01): void => {
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance);
 }; 

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Audio information and progress tracking functions for the audio-channel-queue package
  */
-import { AudioInfo, QueueSnapshot, ProgressCallback, QueueChangeCallback, AudioStartCallback, AudioCompleteCallback, ExtendedAudioQueueChannel } from './types';
+import { AudioInfo, QueueSnapshot, ProgressCallback, QueueChangeCallback, AudioStartCallback, AudioCompleteCallback, AudioPauseCallback, AudioResumeCallback, ExtendedAudioQueueChannel } from './types';
 /**
  * Global array of extended audio queue channels
  */
@@ -120,3 +120,47 @@ export declare const onAudioStart: (channelNumber: number, callback: AudioStartC
  * ```
  */
 export declare const onAudioComplete: (channelNumber: number, callback: AudioCompleteCallback) => void;
+/**
+ * Subscribes to audio pause events for a specific channel
+ * @param channelNumber - The channel number to monitor
+ * @param callback - Function to call when audio is paused
+ * @example
+ * ```typescript
+ * onAudioPause(0, (channelNumber, info) => {
+ *   showPauseIndicator();
+ *   logPauseEvent(info.fileName, info.currentTime);
+ * });
+ * ```
+ */
+export declare const onAudioPause: (channelNumber: number, callback: AudioPauseCallback) => void;
+/**
+ * Subscribes to audio resume events for a specific channel
+ * @param channelNumber - The channel number to monitor
+ * @param callback - Function to call when audio is resumed
+ * @example
+ * ```typescript
+ * onAudioResume(0, (channelNumber, info) => {
+ *   hidePauseIndicator();
+ *   logResumeEvent(info.fileName, info.currentTime);
+ * });
+ * ```
+ */
+export declare const onAudioResume: (channelNumber: number, callback: AudioResumeCallback) => void;
+/**
+ * Removes pause event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioPause(0); // Stop receiving pause notifications for channel 0
+ * ```
+ */
+export declare const offAudioPause: (channelNumber: number) => void;
+/**
+ * Removes resume event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioResume(0); // Stop receiving resume notifications for channel 0
+ * ```
+ */
+export declare const offAudioResume: (channelNumber: number) => void;

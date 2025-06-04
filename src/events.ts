@@ -94,6 +94,60 @@ export const emitAudioComplete = (
   });
 };
 
+/**
+ * Emits an audio pause event to all registered listeners for a specific channel
+ * @param channelNumber - The channel number where audio was paused
+ * @param audioInfo - Information about the audio that was paused
+ * @param audioChannels - Array of audio channels
+ * @example
+ * ```typescript
+ * emitAudioPause(0, audioInfo, audioChannels);
+ * ```
+ */
+export const emitAudioPause = (
+  channelNumber: number, 
+  audioInfo: AudioInfo,
+  audioChannels: ExtendedAudioQueueChannel[]
+): void => {
+  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
+  if (!channel || !channel.audioPauseCallbacks) return;
+
+  channel.audioPauseCallbacks.forEach(callback => {
+    try {
+      callback(channelNumber, audioInfo);
+    } catch (error) {
+      console.error('Error in audio pause callback:', error);
+    }
+  });
+};
+
+/**
+ * Emits an audio resume event to all registered listeners for a specific channel
+ * @param channelNumber - The channel number where audio was resumed
+ * @param audioInfo - Information about the audio that was resumed
+ * @param audioChannels - Array of audio channels
+ * @example
+ * ```typescript
+ * emitAudioResume(0, audioInfo, audioChannels);
+ * ```
+ */
+export const emitAudioResume = (
+  channelNumber: number, 
+  audioInfo: AudioInfo,
+  audioChannels: ExtendedAudioQueueChannel[]
+): void => {
+  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
+  if (!channel || !channel.audioResumeCallbacks) return;
+
+  channel.audioResumeCallbacks.forEach(callback => {
+    try {
+      callback(channelNumber, audioInfo);
+    } catch (error) {
+      console.error('Error in audio resume callback:', error);
+    }
+  });
+};
+
 // Store listener functions for cleanup
 const progressListeners = new WeakMap<HTMLAudioElement, () => void>();
 
@@ -133,7 +187,7 @@ export const setupProgressTracking = (
     
     if (allCallbacks.size === 0) return;
 
-    const info: AudioInfo | null = getAudioInfoFromElement(audio);
+    const info: AudioInfo | null = getAudioInfoFromElement(audio, channelNumber, audioChannels);
     if (info) {
       allCallbacks.forEach((callback: ProgressCallback) => {
         try {

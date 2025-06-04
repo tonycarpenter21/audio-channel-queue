@@ -16,15 +16,21 @@ export declare const extractFileName: (url: string) => string;
 /**
  * Extracts comprehensive audio information from an HTMLAudioElement
  * @param audio - The HTML audio element to extract information from
+ * @param channelNumber - Optional channel number to include remaining queue info
+ * @param audioChannels - Optional audio channels array to calculate remainingInQueue
  * @returns AudioInfo object with current playback state or null if audio is invalid
  * @example
  * ```typescript
  * const audioElement = new Audio('song.mp3');
  * const info = getAudioInfoFromElement(audioElement);
  * console.log(info?.progress); // Current progress as decimal (0-1)
+ *
+ * // With channel context for remainingInQueue
+ * const infoWithQueue = getAudioInfoFromElement(audioElement, 0, audioChannels);
+ * console.log(infoWithQueue?.remainingInQueue); // Number of items left in queue
  * ```
  */
-export declare const getAudioInfoFromElement: (audio: HTMLAudioElement) => AudioInfo | null;
+export declare const getAudioInfoFromElement: (audio: HTMLAudioElement, channelNumber?: number, audioChannels?: ExtendedAudioQueueChannel[]) => AudioInfo | null;
 /**
  * Creates a complete snapshot of a queue's current state
  * @param channelNumber - The channel number to create a snapshot for

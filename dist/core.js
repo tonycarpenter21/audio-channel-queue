@@ -12,39 +12,95 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.playAudioQueue = exports.queueAudio = void 0;
+exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.playAudioQueue = exports.queueAudioPriority = exports.queueAudio = void 0;
 const info_1 = require("./info");
 const utils_1 = require("./utils");
 const events_1 = require("./events");
+const volume_1 = require("./volume");
 /**
  * Queues an audio file to a specific channel and starts playing if it's the first in queue
  * @param audioUrl - The URL of the audio file to queue
  * @param channelNumber - The channel number to queue the audio to (defaults to 0)
+ * @param options - Optional configuration for the audio file
  * @returns Promise that resolves when the audio is queued and starts playing (if first in queue)
  * @example
  * ```typescript
  * await queueAudio('https://example.com/song.mp3', 0);
  * await queueAudio('./sounds/notification.wav'); // Uses default channel 0
+ * await queueAudio('./music/loop.mp3', 1, { loop: true }); // Loop the audio
+ * await queueAudio('./urgent.wav', 0, { addToFront: true }); // Add to front of queue
  * ```
  */
-const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...args_1], void 0, function* (audioUrl, channelNumber = 0) {
+const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...args_1], void 0, function* (audioUrl, channelNumber = 0, options) {
     if (!info_1.audioChannels[channelNumber]) {
         info_1.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioPauseCallbacks: new Set(),
+            audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
+            isPaused: false,
             progressCallbacks: new Map(),
             queue: [],
-            queueChangeCallbacks: new Set()
+            queueChangeCallbacks: new Set(),
+            volume: 1.0
         };
     }
     const audio = new Audio(audioUrl);
-    info_1.audioChannels[channelNumber].queue.push(audio);
+    // Apply audio configuration from options
+    if (options === null || options === void 0 ? void 0 : options.loop) {
+        audio.loop = true;
+    }
+    if ((options === null || options === void 0 ? void 0 : options.volume) !== undefined) {
+        const clampedVolume = Math.max(0, Math.min(1, options.volume));
+        // Handle NaN case - default to channel volume or 1.0
+        const safeVolume = isNaN(clampedVolume) ? (info_1.audioChannels[channelNumber].volume || 1.0) : clampedVolume;
+        audio.volume = safeVolume;
+        // Also update the channel volume
+        info_1.audioChannels[channelNumber].volume = safeVolume;
+    }
+    else {
+        // Use channel volume if no specific volume is set
+        const channelVolume = info_1.audioChannels[channelNumber].volume || 1.0;
+        audio.volume = channelVolume;
+    }
+    // Add to front or back of queue based on options
+    if (((options === null || options === void 0 ? void 0 : options.addToFront) || (options === null || options === void 0 ? void 0 : options.priority)) && info_1.audioChannels[channelNumber].queue.length > 0) {
+        // Insert after the currently playing audio (index 1)
+        info_1.audioChannels[channelNumber].queue.splice(1, 0, audio);
+    }
+    else if (((options === null || options === void 0 ? void 0 : options.addToFront) || (options === null || options === void 0 ? void 0 : options.priority)) && info_1.audioChannels[channelNumber].queue.length === 0) {
+        // If queue is empty, just add normally
+        info_1.audioChannels[channelNumber].queue.push(audio);
+    }
+    else {
+        // Default behavior - add to back of queue
+        info_1.audioChannels[channelNumber].queue.push(audio);
+    }
     (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);
     if (info_1.audioChannels[channelNumber].queue.length === 1) {
-        (0, exports.playAudioQueue)(channelNumber);
+        // Don't await - let playback happen asynchronously
+        (0, exports.playAudioQueue)(channelNumber).catch(console.error);
     }
 });
 exports.queueAudio = queueAudio;
+/**
+ * Adds an audio file to the front of the queue in a specific channel
+ * This is a convenience function that places the audio right after the currently playing track
+ * @param audioUrl - The URL of the audio file to queue
+ * @param channelNumber - The channel number to queue the audio to (defaults to 0)
+ * @param options - Optional configuration for the audio file
+ * @returns Promise that resolves when the audio is queued
+ * @example
+ * ```typescript
+ * await queueAudioPriority('./urgent-announcement.wav', 0);
+ * await queueAudioPriority('./priority-sound.mp3', 1, { loop: true });
+ * ```
+ */
+const queueAudioPriority = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...args_1], void 0, function* (audioUrl, channelNumber = 0, options) {
+    const priorityOptions = Object.assign(Object.assign({}, options), { addToFront: true });
+    return (0, exports.queueAudio)(audioUrl, channelNumber, priorityOptions);
+});
+exports.queueAudioPriority = queueAudioPriority;
 /**
  * Plays the audio queue for a specific channel
  * @param channelNumber - The channel number to play
@@ -56,10 +112,16 @@ exports.queueAudio = queueAudio;
  */
 const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, function* () {
     const channel = info_1.audioChannels[channelNumber];
-    if (channel.queue.length === 0)
+    if (!channel || channel.queue.length === 0)
         return;
     const currentAudio = channel.queue[0];
+    // Apply channel volume if not already set
+    if (currentAudio.volume === 1.0 && channel.volume !== undefined) {
+        currentAudio.volume = channel.volume;
+    }
     (0, events_1.setupProgressTracking)(currentAudio, channelNumber, info_1.audioChannels);
+    // Apply volume ducking when audio starts
+    yield (0, volume_1.applyVolumeDucking)(channelNumber);
     return new Promise((resolve) => {
         let hasStarted = false;
         let metadataLoaded = false;
@@ -94,16 +156,29 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
                 remainingInQueue: channel.queue.length - 1,
                 src: currentAudio.src
             }, info_1.audioChannels);
+            // Restore volume levels when priority channel stops
+            yield (0, volume_1.restoreVolumeLevels)(channelNumber);
             // Clean up event listeners
             currentAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
             currentAudio.removeEventListener('play', handlePlay);
             currentAudio.removeEventListener('ended', handleEnded);
             (0, events_1.cleanupProgressTracking)(currentAudio, channelNumber, info_1.audioChannels);
-            channel.queue.shift();
-            // Emit queue change after completion
-            setTimeout(() => (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels), 10);
-            yield (0, exports.playAudioQueue)(channelNumber);
-            resolve();
+            // Handle looping vs non-looping audio
+            if (currentAudio.loop) {
+                // For looping audio, reset current time and continue playing
+                currentAudio.currentTime = 0;
+                yield currentAudio.play();
+                // Don't remove from queue, but resolve the promise so tests don't hang
+                resolve();
+            }
+            else {
+                // For non-looping audio, remove from queue and play next
+                channel.queue.shift();
+                // Emit queue change after completion
+                setTimeout(() => (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels), 10);
+                yield (0, exports.playAudioQueue)(channelNumber);
+                resolve();
+            }
         });
         // Add event listeners
         currentAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -122,11 +197,11 @@ exports.playAudioQueue = playAudioQueue;
  * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * stopCurrentAudioInChannel(0); // Stop current audio in channel 0
- * stopCurrentAudioInChannel(); // Stop current audio in default channel
+ * await stopCurrentAudioInChannel(0); // Stop current audio in channel 0
+ * await stopCurrentAudioInChannel(); // Stop current audio in default channel
  * ```
  */
-const stopCurrentAudioInChannel = (channelNumber = 0) => {
+const stopCurrentAudioInChannel = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (channelNumber = 0) {
     const channel = info_1.audioChannels[channelNumber];
     if (channel && channel.queue.length > 0) {
         const currentAudio = channel.queue[0];
@@ -136,24 +211,28 @@ const stopCurrentAudioInChannel = (channelNumber = 0) => {
             remainingInQueue: channel.queue.length - 1,
             src: currentAudio.src
         }, info_1.audioChannels);
+        // Restore volume levels when stopping
+        yield (0, volume_1.restoreVolumeLevels)(channelNumber);
         currentAudio.pause();
         (0, events_1.cleanupProgressTracking)(currentAudio, channelNumber, info_1.audioChannels);
         channel.queue.shift();
+        channel.isPaused = false; // Reset pause state
         (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);
-        (0, exports.playAudioQueue)(channelNumber);
+        // Start next audio without waiting for it to complete
+        (0, exports.playAudioQueue)(channelNumber).catch(console.error);
     }
-};
+});
 exports.stopCurrentAudioInChannel = stopCurrentAudioInChannel;
 /**
  * Stops all audio in a specific channel and clears the entire queue
  * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * stopAllAudioInChannel(0); // Clear all audio in channel 0
- * stopAllAudioInChannel(); // Clear all audio in default channel
+ * await stopAllAudioInChannel(0); // Clear all audio in channel 0
+ * await stopAllAudioInChannel(); // Clear all audio in default channel
  * ```
  */
-const stopAllAudioInChannel = (channelNumber = 0) => {
+const stopAllAudioInChannel = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (channelNumber = 0) {
     const channel = info_1.audioChannels[channelNumber];
     if (channel) {
         if (channel.queue.length > 0) {
@@ -164,26 +243,31 @@ const stopAllAudioInChannel = (channelNumber = 0) => {
                 remainingInQueue: 0, // Will be 0 since we're clearing the queue
                 src: currentAudio.src
             }, info_1.audioChannels);
+            // Restore volume levels when stopping
+            yield (0, volume_1.restoreVolumeLevels)(channelNumber);
             currentAudio.pause();
             (0, events_1.cleanupProgressTracking)(currentAudio, channelNumber, info_1.audioChannels);
         }
         // Clean up all progress tracking for this channel
         channel.queue.forEach(audio => (0, events_1.cleanupProgressTracking)(audio, channelNumber, info_1.audioChannels));
         channel.queue = [];
+        channel.isPaused = false; // Reset pause state
         (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);
     }
-};
+});
 exports.stopAllAudioInChannel = stopAllAudioInChannel;
 /**
  * Stops all audio across all channels and clears all queues
  * @example
  * ```typescript
- * stopAllAudio(); // Emergency stop - clears everything
+ * await stopAllAudio(); // Emergency stop - clears everything
  * ```
  */
-const stopAllAudio = () => {
+const stopAllAudio = () => __awaiter(void 0, void 0, void 0, function* () {
+    const stopPromises = [];
     info_1.audioChannels.forEach((_channel, index) => {
-        (0, exports.stopAllAudioInChannel)(index);
+        stopPromises.push((0, exports.stopAllAudioInChannel)(index));
     });
-};
+    yield Promise.all(stopPromises);
+});
 exports.stopAllAudio = stopAllAudio;

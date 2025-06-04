@@ -1,7 +1,7 @@
 /**
  * @fileoverview Event handling and emission for the audio-channel-queue package
  */
-import { AudioStartInfo, AudioCompleteInfo, ExtendedAudioQueueChannel } from './types';
+import { AudioStartInfo, AudioCompleteInfo, ExtendedAudioQueueChannel, AudioInfo } from './types';
 /**
  * Emits a queue change event to all registered listeners for a specific channel
  * @param channelNumber - The channel number that experienced a queue change
@@ -34,6 +34,28 @@ export declare const emitAudioStart: (channelNumber: number, audioInfo: AudioSta
  * ```
  */
 export declare const emitAudioComplete: (channelNumber: number, audioInfo: AudioCompleteInfo, audioChannels: ExtendedAudioQueueChannel[]) => void;
+/**
+ * Emits an audio pause event to all registered listeners for a specific channel
+ * @param channelNumber - The channel number where audio was paused
+ * @param audioInfo - Information about the audio that was paused
+ * @param audioChannels - Array of audio channels
+ * @example
+ * ```typescript
+ * emitAudioPause(0, audioInfo, audioChannels);
+ * ```
+ */
+export declare const emitAudioPause: (channelNumber: number, audioInfo: AudioInfo, audioChannels: ExtendedAudioQueueChannel[]) => void;
+/**
+ * Emits an audio resume event to all registered listeners for a specific channel
+ * @param channelNumber - The channel number where audio was resumed
+ * @param audioInfo - Information about the audio that was resumed
+ * @param audioChannels - Array of audio channels
+ * @example
+ * ```typescript
+ * emitAudioResume(0, audioInfo, audioChannels);
+ * ```
+ */
+export declare const emitAudioResume: (channelNumber: number, audioInfo: AudioInfo, audioChannels: ExtendedAudioQueueChannel[]) => void;
 /**
  * Sets up comprehensive progress tracking for an audio element
  * @param audio - The HTML audio element to track
