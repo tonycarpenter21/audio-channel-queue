@@ -2,6 +2,81 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2025-01-16
+
+### Added - Comprehensive Error Handling & Recovery System 🚨
+- **🔧 Error Detection & Categorization**: Automatic error type classification
+  - `onAudioError(channelNumber, callback)` - Subscribe to error events with detailed error information
+  - `offAudioError(channelNumber, callback)` - Remove error event listeners
+  - **Error categorization**: Network, decode, unsupported, permission, abort, timeout, and unknown error types
+  - **Rich error context**: Error type, retry attempt, remaining queue items, timestamps, and file information
+
+- **🔄 Smart Retry Logic with Exponential Backoff**: Automatic recovery from transient failures
+  - `setRetryConfig(config)` - Configure retry behavior (max attempts, delays, timeouts)
+  - `getRetryConfig()` - Get current retry configuration
+  - `retryFailedAudio(channelNumber)` - Manually retry failed audio
+  - **Exponential backoff**: Progressive delay increases (1s → 2s → 4s → 8s) to avoid overwhelming servers
+  - **Fallback URL support**: Automatically tries backup servers/CDNs when primary source fails
+  - **Configurable timeouts**: Set maximum wait times for audio loading
+  - **Skip vs preserve**: Choose to skip failed tracks or keep retrying
+
+- **🎵 Advanced Error Recovery**: Intelligent queue management during failures
+  - `setErrorRecovery(options)` - Configure error recovery behavior
+  - `getErrorRecovery()` - Get current recovery settings
+  - **Auto-continue playback**: Automatically plays next track when current fails
+  - **Queue preservation**: Keeps remaining tracks even if one fails
+  - **User feedback options**: Optional error notifications and analytics logging
+  - **Graceful degradation**: Maintains audio experience even when some sources fail
+
+### Added - Enhanced Type System & Utilities
+- **📋 QueueItem Type**: Complete type definition for individual queue items
+  - New `QueueItem` interface with duration, filename, playing status, looping state, source URL, and volume
+  - Enhanced type safety for queue manipulation and display
+  - Full TypeScript intellisense support for queue item properties
+
+- **🛠️ Utility Function Exports**: Previously internal utilities now publicly available
+  - `extractFileName(url)` - Extract clean filenames from URLs for display
+  - `getAudioInfoFromElement(audio, channel)` - Extract comprehensive audio metadata
+  - `createQueueSnapshot(channel)` - Generate detailed queue state snapshots
+  - `cleanWebpackFilename(filename)` - Clean up bundled filenames for better UX
+
+### Changed - Code Quality & Architecture Improvements
+- **🧹 Production Code Cleanup**: Removed all test-specific logic from production code
+  - Eliminated Jest environment detection and mock preservation logic
+  - Removed test-specific timing adjustments and conditional behavior
+  - Clean separation between production functionality and test setup
+  - Improved performance by removing unnecessary runtime checks
+
+- **⚡ Volume Transition Improvements**: More precise volume control behavior
+  - Fixed duration handling: Only instant changes for `duration === 0` (not `duration <= 5`)
+  - Better API contract: Short durations (1-5ms) now execute as requested instead of instant
+  - Improved test reliability through proper mocking instead of production code workarounds
+
+- **🏗️ Enhanced Test Architecture**: Better separation of concerns in testing
+  - Test-specific behavior handled in test setup files rather than production code
+  - Proper Jest mock preservation through test utilities
+  - Faster test execution with optimized setTimeout mocking for volume transitions
+
+### Added - Error Handling Integration Examples
+- **Network failure simulation** with automatic retry and fallback URL demonstration
+- **Mixed success/failure queue handling** showing graceful degradation
+- **Real-time error monitoring** with detailed error event information
+- **Custom recovery configuration** examples for different use cases
+- **Multi-channel error isolation** ensuring independent error handling per channel
+
+### Technical Improvements
+- **Error event emission** with comprehensive error context and metadata
+- **Timeout protection** for audio loading with configurable time limits
+- **Memory-safe error handling** with proper cleanup of retry attempts and timeouts
+- **Backward compatibility maintained** - all existing APIs continue to work without changes
+- **Enhanced TypeScript definitions** for all new error handling interfaces and types
+
+### Fixed
+- **Test mock preservation**: Jest mocks now properly maintained during error handling setup
+- **Volume transition precision**: Corrected timing behavior for short-duration volume changes
+- **Code coupling issues**: Eliminated dependencies between production code and testing frameworks
+- **Export completeness**: All utility functions and types now properly exported from package
+
 ## [1.6.0] - 2025-01-16
 
 ### Added - Major Feature Expansion 🚀
