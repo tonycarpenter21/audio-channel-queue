@@ -68,6 +68,7 @@ describe('Pause/Resume Functionality', () => {
       audioChannels[0] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
         audioStartCallbacks: new Set(),
@@ -230,6 +231,7 @@ describe('Pause/Resume Functionality', () => {
       audioChannels[0] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
         audioStartCallbacks: new Set(),

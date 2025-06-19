@@ -51,7 +51,7 @@ export const resumeChannel = async (channelNumber: number = 0): Promise<void> =>
   if (channel && channel.queue.length > 0) {
     const currentAudio: HTMLAudioElement = channel.queue[0];
     
-    // Only resume if both the channel is marked as paused AND the audio element is actually paused
+    // Only resume if both the channel is marked as paused AND the audio element is actually paused AND not ended
     if (channel.isPaused && currentAudio.paused && !currentAudio.ended) {
       await currentAudio.play();
       channel.isPaused = false;

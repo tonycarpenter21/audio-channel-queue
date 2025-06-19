@@ -56,7 +56,7 @@ export const transitionVolume = async (
   }
 
   // Handle zero duration - instant change
-  if (duration <= 0) {
+  if (duration === 0) {
     channel.volume = targetVolume;
     if (channel.queue.length > 0) {
       channel.queue[0].volume = targetVolume;
@@ -124,8 +124,9 @@ export const setChannelVolume = async (
   const clampedVolume: number = Math.max(0, Math.min(1, volume));
   
   if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+    audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -220,6 +221,7 @@ export const setVolumeDucking = (config: VolumeConfig): void => {
   while (audioChannels.length <= config.priorityChannel) {
     audioChannels.push({
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -234,8 +236,9 @@ export const setVolumeDucking = (config: VolumeConfig): void => {
   // Apply the config to all existing channels
   audioChannels.forEach((channel: ExtendedAudioQueueChannel, index: number) => {
     if (!audioChannels[index]) {
-      audioChannels[index] = { 
+      audioChannels[index] = {
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
         audioStartCallbacks: new Set(),

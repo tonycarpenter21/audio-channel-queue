@@ -1,29 +1,13 @@
 /**
  * @fileoverview Main entry point for the audio-channel-queue package
- *
- * A comprehensive audio queue management system with real-time progress tracking,
- * multi-channel support, pause/resume functionality, volume control with ducking,
- * looping capabilities, and extensive event handling.
- *
- * @example Basic Usage
- * ```typescript
- * import { queueAudio, onAudioProgress, pauseChannel } from 'audio-channel-queue';
- *
- * // Queue an audio file
- * await queueAudio('song.mp3');
- *
- * // Track progress
- * onAudioProgress(0, (info) => {
- *   console.log(`Progress: ${info.progress * 100}%`);
- * });
- *
- * // Pause playback
- * await pauseChannel(0);
- * ```
+ * Exports all public functions and types for audio queue management, pause/resume controls,
+ * volume management with ducking, progress tracking, and comprehensive event system
  */
-export type { AudioCompleteCallback, AudioCompleteInfo, AudioInfo, AudioPauseCallback, AudioQueue, AudioQueueChannel, AudioQueueOptions, AudioResumeCallback, AudioStartCallback, AudioStartInfo, ExtendedAudioQueueChannel, ProgressCallback, QueueChangeCallback, QueueItem, QueueSnapshot, VolumeConfig } from './types';
-export { playAudioQueue, queueAudio, queueAudioPriority, stopAllAudio, stopAllAudioInChannel, stopCurrentAudioInChannel } from './core';
-export { getAllChannelsPauseState, isChannelPaused, pauseAllChannels, pauseChannel, resumeAllChannels, resumeChannel, togglePauseAllChannels, togglePauseChannel } from './pause';
-export { applyVolumeDucking, clearVolumeDucking, getAllChannelsVolume, getChannelVolume, restoreVolumeLevels, setAllChannelsVolume, setChannelVolume, setVolumeDucking, transitionVolume } from './volume';
-export { audioChannels, getAllChannelsInfo, getCurrentAudioInfo, getQueueSnapshot, offAudioPause, offAudioProgress, offAudioResume, offQueueChange, onAudioComplete, onAudioPause, onAudioProgress, onAudioResume, onAudioStart, onQueueChange } from './info';
+export { queueAudio, queueAudioPriority, stopCurrentAudioInChannel, stopAllAudioInChannel, stopAllAudio, playAudioQueue } from './core';
+export { getErrorRecovery, getRetryConfig, offAudioError, onAudioError, retryFailedAudio, setErrorRecovery, setRetryConfig, } from './errors';
+export { getAllChannelsPauseState, isChannelPaused, pauseAllChannels, pauseChannel, resumeAllChannels, resumeChannel, togglePauseAllChannels, togglePauseChannel, } from './pause';
+export { clearVolumeDucking, getAllChannelsVolume, getChannelVolume, setAllChannelsVolume, setChannelVolume, setVolumeDucking, } from './volume';
+export { getAllChannelsInfo, getCurrentAudioInfo, getQueueSnapshot, offAudioPause, offAudioProgress, offAudioResume, offQueueChange, onAudioComplete, onAudioPause, onAudioProgress, onAudioResume, onAudioStart, onQueueChange, } from './info';
+export { audioChannels } from './info';
 export { cleanWebpackFilename, createQueueSnapshot, extractFileName, getAudioInfoFromElement } from './utils';
+export type { AudioCompleteCallback, AudioCompleteInfo, AudioErrorCallback, AudioErrorInfo, AudioInfo, AudioPauseCallback, AudioQueueOptions, AudioResumeCallback, AudioStartCallback, AudioStartInfo, ErrorRecoveryOptions, ExtendedAudioQueueChannel, ProgressCallback, QueueChangeCallback, QueueSnapshot, RetryConfig, VolumeConfig } from './types';

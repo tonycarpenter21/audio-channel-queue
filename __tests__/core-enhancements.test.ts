@@ -169,9 +169,12 @@ describe('Enhanced Core Features', () => {
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(mockAudio.loop).toBe(false);
       
+      // Wait for audio to start playing
+      await waitForPromises(50);
+      
       // Simulate audio ending - should move to next item
-      mockAudio.dispatchEvent(new Event('ended'));
-      await waitForPromises();
+      mockAudio.simulateEnded();
+      await waitForPromises(50);
       
       expect(audioChannels[0].queue.length).toBe(1);
       expect(audioChannels[0].queue[0].src).toBe('next.mp3');
@@ -256,6 +259,7 @@ describe('Enhanced Core Features', () => {
       audioChannels[0] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
         audioStartCallbacks: new Set([startCallback]),
@@ -281,6 +285,7 @@ describe('Enhanced Core Features', () => {
       audioChannels[0] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
         audioStartCallbacks: new Set(),

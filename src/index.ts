@@ -1,104 +1,90 @@
 /**
  * @fileoverview Main entry point for the audio-channel-queue package
- * 
- * A comprehensive audio queue management system with real-time progress tracking,
- * multi-channel support, pause/resume functionality, volume control with ducking,
- * looping capabilities, and extensive event handling.
- * 
- * @example Basic Usage
- * ```typescript
- * import { queueAudio, onAudioProgress, pauseChannel } from 'audio-channel-queue';
- * 
- * // Queue an audio file
- * await queueAudio('song.mp3');
- * 
- * // Track progress
- * onAudioProgress(0, (info) => {
- *   console.log(`Progress: ${info.progress * 100}%`);
- * });
- * 
- * // Pause playback
- * await pauseChannel(0);
- * ```
+ * Exports all public functions and types for audio queue management, pause/resume controls,
+ * volume management with ducking, progress tracking, and comprehensive event system
  */
 
-// Export all type definitions
-export type {
-  AudioCompleteCallback,
-  AudioCompleteInfo,
-  AudioInfo,
-  AudioPauseCallback,
-  AudioQueue,
-  AudioQueueChannel,
-  AudioQueueOptions,
-  AudioResumeCallback,
-  AudioStartCallback,
-  AudioStartInfo,
-  ExtendedAudioQueueChannel,
-  ProgressCallback,
-  QueueChangeCallback,
-  QueueItem,
-  QueueSnapshot,
-  VolumeConfig
-} from './types';
+// Core queue management functions
+export { queueAudio, queueAudioPriority, stopCurrentAudioInChannel, stopAllAudioInChannel, stopAllAudio, playAudioQueue } from './core';
 
-// Export core queue management functions
-export {
-  playAudioQueue,
-  queueAudio,
-  queueAudioPriority,
-  stopAllAudio,
-  stopAllAudioInChannel,
-  stopCurrentAudioInChannel
-} from './core';
+// Error handling and recovery functions
+export { 
+  getErrorRecovery, 
+  getRetryConfig, 
+  offAudioError, 
+  onAudioError, 
+  retryFailedAudio,
+  setErrorRecovery, 
+  setRetryConfig, 
+} from './errors';
 
-// Export pause and resume functionality
-export {
-  getAllChannelsPauseState,
-  isChannelPaused,
-  pauseAllChannels,
-  pauseChannel,
-  resumeAllChannels,
-  resumeChannel,
+// Pause and resume management functions
+export { 
+  getAllChannelsPauseState, 
+  isChannelPaused, 
+  pauseAllChannels, 
+  pauseChannel, 
+  resumeAllChannels, 
+  resumeChannel, 
   togglePauseAllChannels,
-  togglePauseChannel
+  togglePauseChannel, 
 } from './pause';
 
-// Export volume control functions
-export {
-  applyVolumeDucking,
+// Volume control and ducking functions
+export { 
   clearVolumeDucking,
-  getAllChannelsVolume,
-  getChannelVolume,
-  restoreVolumeLevels,
-  setAllChannelsVolume,
-  setChannelVolume,
-  setVolumeDucking,
-  transitionVolume
+  getAllChannelsVolume, 
+  getChannelVolume, 
+  setAllChannelsVolume, 
+  setChannelVolume, 
+  setVolumeDucking, 
 } from './volume';
 
-// Export audio information and progress tracking functions
-export {
-  audioChannels,
-  getAllChannelsInfo,
-  getCurrentAudioInfo,
-  getQueueSnapshot,
-  offAudioPause,
-  offAudioProgress,
+// Audio information and progress tracking functions
+export { 
+  getAllChannelsInfo, 
+  getCurrentAudioInfo, 
+  getQueueSnapshot, 
+  offAudioPause, 
+  offAudioProgress, 
   offAudioResume,
-  offQueueChange,
-  onAudioComplete,
-  onAudioPause,
-  onAudioProgress,
-  onAudioResume,
-  onAudioStart,
-  onQueueChange
+  offQueueChange, 
+  onAudioComplete, 
+  onAudioPause, 
+  onAudioProgress, 
+  onAudioResume, 
+  onAudioStart, 
+  onQueueChange, 
 } from './info';
 
-// Export utility functions (for advanced usage)
+// Core data access for legacy compatibility
+export { audioChannels } from './info';
+
+// Utility helper functions
 export {
   cleanWebpackFilename,
   createQueueSnapshot,
   extractFileName,
   getAudioInfoFromElement
-} from './utils'; 
+} from './utils';
+
+// TypeScript type definitions and interfaces
+export type { 
+  AudioCompleteCallback,
+  AudioCompleteInfo,
+  AudioErrorCallback,
+  AudioErrorInfo,
+  AudioInfo, 
+  AudioPauseCallback,
+  AudioQueueOptions,
+  AudioResumeCallback,
+  AudioStartCallback,
+  AudioStartInfo,
+  ErrorRecoveryOptions,
+  ExtendedAudioQueueChannel,
+  ProgressCallback,
+  QueueChangeCallback,
+  QueueSnapshot,
+  RetryConfig,
+  VolumeConfig 
+} from './types'; 

@@ -159,25 +159,58 @@ export type AudioPauseCallback = (channelNumber: number, audioInfo: AudioInfo) =
  */
 export type AudioResumeCallback = (channelNumber: number, audioInfo: AudioInfo) => void;
 /**
- * Extended audio queue channel with event callback management and additional features
+ * Information about an audio error that occurred
  */
-export type ExtendedAudioQueueChannel = AudioQueueChannel & {
-    /** Set of callbacks for audio completion events */
-    audioCompleteCallbacks?: Set<AudioCompleteCallback>;
-    /** Set of callbacks for audio pause events */
-    audioPauseCallbacks?: Set<AudioPauseCallback>;
-    /** Set of callbacks for audio resume events */
-    audioResumeCallbacks?: Set<AudioResumeCallback>;
-    /** Set of callbacks for audio start events */
-    audioStartCallbacks?: Set<AudioStartCallback>;
-    /** Whether the current audio in this channel is paused */
+export interface AudioErrorInfo {
+    channelNumber: number;
+    src: string;
+    fileName: string;
+    error: Error;
+    errorType: 'network' | 'decode' | 'unsupported' | 'permission' | 'abort' | 'timeout' | 'unknown';
+    timestamp: number;
+    retryAttempt?: number;
+    remainingInQueue: number;
+}
+/**
+ * Configuration for automatic retry behavior when audio fails to load or play
+ */
+export interface RetryConfig {
+    enabled: boolean;
+    maxRetries: number;
+    baseDelay: number;
+    exponentialBackoff: boolean;
+    timeoutMs: number;
+    fallbackUrls?: string[];
+    skipOnFailure: boolean;
+}
+/**
+ * Configuration options for error recovery mechanisms
+ */
+export interface ErrorRecoveryOptions {
+    autoRetry: boolean;
+    showUserFeedback: boolean;
+    logErrorsToAnalytics: boolean;
+    preserveQueueOnError: boolean;
+    fallbackToNextTrack: boolean;
+}
+/**
+ * Callback function type for audio error events
+ */
+export type AudioErrorCallback = (errorInfo: AudioErrorInfo) => void;
+/**
+ * Extended audio queue channel with error handling capabilities
+ */
+export interface ExtendedAudioQueueChannel {
+    audioCompleteCallbacks: Set<AudioCompleteCallback>;
+    audioErrorCallbacks: Set<AudioErrorCallback>;
+    audioPauseCallbacks: Set<AudioPauseCallback>;
+    audioResumeCallbacks: Set<AudioResumeCallback>;
+    audioStartCallbacks: Set<AudioStartCallback>;
     isPaused?: boolean;
-    /** Map of audio elements to their progress callback sets */
-    progressCallbacks?: Map<HTMLAudioElement, Set<ProgressCallback>>;
-    /** Set of callbacks for queue change events */
-    queueChangeCallbacks?: Set<QueueChangeCallback>;
-    /** Current volume level for this channel (0-1) */
+    progressCallbacks: Map<HTMLAudioElement | null, Set<ProgressCallback>>;
+    queue: HTMLAudioElement[];
+    queueChangeCallbacks: Set<QueueChangeCallback>;
+    retryConfig?: RetryConfig;
     volume?: number;
-    /** Volume ducking configuration for this channel */
     volumeConfig?: VolumeConfig;
-};
+}

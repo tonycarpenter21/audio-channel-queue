@@ -210,6 +210,7 @@ describe('Volume Control', () => {
       audioChannels[0] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
         audioStartCallbacks: new Set(),

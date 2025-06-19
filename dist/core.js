@@ -17,6 +17,7 @@ const info_1 = require("./info");
 const utils_1 = require("./utils");
 const events_1 = require("./events");
 const volume_1 = require("./volume");
+const errors_1 = require("./errors");
 /**
  * Queues an audio file to a specific channel and starts playing if it's the first in queue
  * @param audioUrl - The URL of the audio file to queue
@@ -32,9 +33,11 @@ const volume_1 = require("./volume");
  * ```
  */
 const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...args_1], void 0, function* (audioUrl, channelNumber = 0, options) {
-    if (!info_1.audioChannels[channelNumber]) {
-        info_1.audioChannels[channelNumber] = {
+    // Ensure the channel exists
+    while (info_1.audioChannels.length <= channelNumber) {
+        info_1.audioChannels.push({
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -43,43 +46,51 @@ const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...
             queue: [],
             queueChangeCallbacks: new Set(),
             volume: 1.0
-        };
+        });
     }
+    const channel = info_1.audioChannels[channelNumber];
     const audio = new Audio(audioUrl);
-    // Apply audio configuration from options
-    if (options === null || options === void 0 ? void 0 : options.loop) {
-        audio.loop = true;
+    // Set up comprehensive error handling
+    (0, errors_1.setupAudioErrorHandling)(audio, channelNumber, audioUrl, (error) => __awaiter(void 0, void 0, void 0, function* () {
+        yield (0, errors_1.handleAudioError)(audio, channelNumber, audioUrl, error);
+    }));
+    // Apply options if provided
+    if (options) {
+        if (typeof options.loop === 'boolean') {
+            audio.loop = options.loop;
+        }
+        if (typeof options.volume === 'number' && !isNaN(options.volume)) {
+            const clampedVolume = Math.max(0, Math.min(1, options.volume));
+            audio.volume = clampedVolume;
+            // Set channel volume to match the audio volume
+            channel.volume = clampedVolume;
+        }
     }
-    if ((options === null || options === void 0 ? void 0 : options.volume) !== undefined) {
-        const clampedVolume = Math.max(0, Math.min(1, options.volume));
-        // Handle NaN case - default to channel volume or 1.0
-        const safeVolume = isNaN(clampedVolume) ? (info_1.audioChannels[channelNumber].volume || 1.0) : clampedVolume;
-        audio.volume = safeVolume;
-        // Also update the channel volume
-        info_1.audioChannels[channelNumber].volume = safeVolume;
+    // Handle priority option (same as addToFront for backward compatibility)
+    const shouldAddToFront = (options === null || options === void 0 ? void 0 : options.addToFront) || (options === null || options === void 0 ? void 0 : options.priority);
+    // Add to queue based on priority/addToFront option
+    if (shouldAddToFront && channel.queue.length > 0) {
+        // Insert after currently playing track (at index 1)
+        channel.queue.splice(1, 0, audio);
+    }
+    else if (shouldAddToFront) {
+        // If queue is empty, add to front
+        channel.queue.unshift(audio);
     }
     else {
-        // Use channel volume if no specific volume is set
-        const channelVolume = info_1.audioChannels[channelNumber].volume || 1.0;
-        audio.volume = channelVolume;
+        // Add to back of queue
+        channel.queue.push(audio);
     }
-    // Add to front or back of queue based on options
-    if (((options === null || options === void 0 ? void 0 : options.addToFront) || (options === null || options === void 0 ? void 0 : options.priority)) && info_1.audioChannels[channelNumber].queue.length > 0) {
-        // Insert after the currently playing audio (index 1)
-        info_1.audioChannels[channelNumber].queue.splice(1, 0, audio);
-    }
-    else if (((options === null || options === void 0 ? void 0 : options.addToFront) || (options === null || options === void 0 ? void 0 : options.priority)) && info_1.audioChannels[channelNumber].queue.length === 0) {
-        // If queue is empty, just add normally
-        info_1.audioChannels[channelNumber].queue.push(audio);
-    }
-    else {
-        // Default behavior - add to back of queue
-        info_1.audioChannels[channelNumber].queue.push(audio);
-    }
+    // Emit queue change event
     (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);
-    if (info_1.audioChannels[channelNumber].queue.length === 1) {
-        // Don't await - let playback happen asynchronously
-        (0, exports.playAudioQueue)(channelNumber).catch(console.error);
+    // Start playing if this is the first item and channel isn't paused
+    if (channel.queue.length === 1 && !channel.isPaused) {
+        // Use setTimeout to ensure the queue change event is emitted first
+        setTimeout(() => {
+            (0, exports.playAudioQueue)(channelNumber).catch((error) => {
+                (0, errors_1.handleAudioError)(audio, channelNumber, audioUrl, error);
+            });
+        }, 0);
     }
 });
 exports.queueAudio = queueAudio;
@@ -167,8 +178,12 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
             if (currentAudio.loop) {
                 // For looping audio, reset current time and continue playing
                 currentAudio.currentTime = 0;
-                yield currentAudio.play();
-                // Don't remove from queue, but resolve the promise so tests don't hang
+                try {
+                    yield currentAudio.play();
+                }
+                catch (error) {
+                    yield (0, errors_1.handleAudioError)(currentAudio, channelNumber, currentAudio.src, error);
+                }
                 resolve();
             }
             else {
@@ -188,7 +203,11 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
         if (currentAudio.readyState >= 1) { // HAVE_METADATA or higher
             metadataLoaded = true;
         }
-        currentAudio.play();
+        // Enhanced play with error handling
+        currentAudio.play().catch((error) => __awaiter(void 0, void 0, void 0, function* () {
+            yield (0, errors_1.handleAudioError)(currentAudio, channelNumber, currentAudio.src, error);
+            resolve(); // Resolve to prevent hanging
+        }));
     });
 });
 exports.playAudioQueue = playAudioQueue;

@@ -55,7 +55,7 @@ const resumeChannel = (...args_1) => __awaiter(void 0, [...args_1], void 0, func
     const channel = info_1.audioChannels[channelNumber];
     if (channel && channel.queue.length > 0) {
         const currentAudio = channel.queue[0];
-        // Only resume if both the channel is marked as paused AND the audio element is actually paused
+        // Only resume if both the channel is marked as paused AND the audio element is actually paused AND not ended
         if (channel.isPaused && currentAudio.paused && !currentAudio.ended) {
             yield currentAudio.play();
             channel.isPaused = false;

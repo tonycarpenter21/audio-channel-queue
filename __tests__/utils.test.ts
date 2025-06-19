@@ -178,9 +178,14 @@ describe('Utility Functions', () => {
       const channels: ExtendedAudioQueueChannel[] = [{
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioStartCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        isPaused: false,
         progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set()
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
       }];
 
       const snapshot = createQueueSnapshot(0, channels);
@@ -210,9 +215,14 @@ describe('Utility Functions', () => {
       const channels: ExtendedAudioQueueChannel[] = [{
         queue: [mockAudio1 as any, mockAudio2 as any, mockAudio3 as any],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioStartCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        isPaused: false,
         progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set()
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
       }];
 
       const snapshot = createQueueSnapshot(0, channels);
@@ -259,9 +269,14 @@ describe('Utility Functions', () => {
       const channels: ExtendedAudioQueueChannel[] = [{
         queue: [mockAudio as any],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioStartCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        isPaused: false,
         progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set()
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
       }];
 
       const snapshot = createQueueSnapshot(0, channels);
@@ -284,9 +299,14 @@ describe('Utility Functions', () => {
       const channels: ExtendedAudioQueueChannel[] = [{
         queue: [mockAudio1 as any, mockAudio2 as any],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioStartCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        isPaused: false,
         progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set()
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
       }];
 
       const snapshot = createQueueSnapshot(0, channels);

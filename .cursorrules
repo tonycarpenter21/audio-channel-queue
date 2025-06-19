@@ -14,7 +14,8 @@ This is a TypeScript npm package for audio queue management with real-time progr
 - Use modular architecture - keep concerns separated across files
 - Return all time values in milliseconds for consistency
 - Use consistent error handling with try/catch blocks
-- Export interfaces and types from src/types.ts
+- Export interfaces and types from src/types.ts]
+- Remove unused imports
 
 ## File Organization
 - src/types.ts - All TypeScript interfaces and type definitions

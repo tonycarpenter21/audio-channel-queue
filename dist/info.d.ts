@@ -3,7 +3,8 @@
  */
 import { AudioInfo, QueueSnapshot, ProgressCallback, QueueChangeCallback, AudioStartCallback, AudioCompleteCallback, AudioPauseCallback, AudioResumeCallback, ExtendedAudioQueueChannel } from './types';
 /**
- * Global array of extended audio queue channels
+ * Global array to store audio channels with their queues and callback management
+ * Each channel maintains its own audio queue and event callback sets
  */
 export declare const audioChannels: ExtendedAudioQueueChannel[];
 /**

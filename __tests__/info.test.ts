@@ -39,9 +39,14 @@ describe('Audio Information Functions', () => {
       audioChannels[0] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioStartCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        isPaused: false,
         progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set()
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
       };
       
       const info = getCurrentAudioInfo(0);
@@ -110,9 +115,14 @@ describe('Audio Information Functions', () => {
       audioChannels[1] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioStartCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        isPaused: false,
         progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set()
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
       };
       
       const allInfo = getAllChannelsInfo();
@@ -185,9 +195,14 @@ describe('Audio Information Functions', () => {
       audioChannels[0] = {
         queue: [],
         audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
         audioStartCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        isPaused: false,
         progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set()
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
       };
       
       const snapshot = getQueueSnapshot(0);
@@ -345,9 +360,17 @@ describe('Audio Lifecycle Events', () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
       
+      // Wait for audio to start playing first
+      await waitForPromises(50);
+      
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      // Simulate that audio has started and then ended
+      mockAudio.paused = false;
+      mockAudio.ended = false;
       mockAudio.simulateEnded();
-      await waitForPromises();
+      
+      // Wait for the event to be processed
+      await waitForPromises(50);
       
       expect(callback).toHaveBeenCalled();
       const completeInfo = callback.mock.calls[0][0];

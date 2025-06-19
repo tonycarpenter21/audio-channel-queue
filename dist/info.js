@@ -7,7 +7,8 @@ exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports
 const utils_1 = require("./utils");
 const events_1 = require("./events");
 /**
- * Global array of extended audio queue channels
+ * Global array to store audio channels with their queues and callback management
+ * Each channel maintains its own audio queue and event callback sets
  */
 exports.audioChannels = [];
 /**
@@ -86,6 +87,7 @@ const onAudioProgress = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -154,6 +156,7 @@ const onQueueChange = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -202,6 +205,7 @@ const onAudioStart = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -237,6 +241,7 @@ const onAudioComplete = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -270,6 +275,7 @@ const onAudioPause = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -303,6 +309,7 @@ const onAudioResume = (channelNumber, callback) => {
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),

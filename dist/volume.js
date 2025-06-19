@@ -55,7 +55,7 @@ const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __await
         return Promise.resolve();
     }
     // Handle zero duration - instant change
-    if (duration <= 0) {
+    if (duration === 0) {
         channel.volume = targetVolume;
         if (channel.queue.length > 0) {
             channel.queue[0].volume = targetVolume;
@@ -115,6 +115,7 @@ const setChannelVolume = (channelNumber, volume, transitionDuration, easing) => 
     if (!info_1.audioChannels[channelNumber]) {
         info_1.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -207,6 +208,7 @@ const setVolumeDucking = (config) => {
     while (info_1.audioChannels.length <= config.priorityChannel) {
         info_1.audioChannels.push({
             audioCompleteCallbacks: new Set(),
+            audioErrorCallbacks: new Set(),
             audioPauseCallbacks: new Set(),
             audioResumeCallbacks: new Set(),
             audioStartCallbacks: new Set(),
@@ -222,6 +224,7 @@ const setVolumeDucking = (config) => {
         if (!info_1.audioChannels[index]) {
             info_1.audioChannels[index] = {
                 audioCompleteCallbacks: new Set(),
+                audioErrorCallbacks: new Set(),
                 audioPauseCallbacks: new Set(),
                 audioResumeCallbacks: new Set(),
                 audioStartCallbacks: new Set(),

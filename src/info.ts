@@ -17,7 +17,8 @@ import { getAudioInfoFromElement, createQueueSnapshot } from './utils';
 import { setupProgressTracking, cleanupProgressTracking } from './events';
 
 /**
- * Global array of extended audio queue channels
+ * Global array to store audio channels with their queues and callback management
+ * Each channel maintains its own audio queue and event callback sets
  */
 export const audioChannels: ExtendedAudioQueueChannel[] = [];
 
@@ -100,6 +101,7 @@ export const onAudioProgress = (channelNumber: number, callback: ProgressCallbac
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = { 
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -173,6 +175,7 @@ export const onQueueChange = (channelNumber: number, callback: QueueChangeCallba
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = { 
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -223,6 +226,7 @@ export const onAudioStart = (channelNumber: number, callback: AudioStartCallback
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = { 
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -260,6 +264,7 @@ export const onAudioComplete = (channelNumber: number, callback: AudioCompleteCa
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = { 
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -295,6 +300,7 @@ export const onAudioPause = (channelNumber: number, callback: AudioPauseCallback
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = { 
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -330,6 +336,7 @@ export const onAudioResume = (channelNumber: number, callback: AudioResumeCallba
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = { 
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),

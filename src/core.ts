@@ -13,6 +13,7 @@ import {
   cleanupProgressTracking 
 } from './events';
 import { applyVolumeDucking, restoreVolumeLevels } from './volume';
+import { setupAudioErrorHandling, handleAudioError } from './errors';
 
 /**
  * Queues an audio file to a specific channel and starts playing if it's the first in queue
@@ -33,9 +34,11 @@ export const queueAudio = async (
   channelNumber: number = 0, 
   options?: AudioQueueOptions
 ): Promise<void> => {
-  if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+  // Ensure the channel exists
+  while (audioChannels.length <= channelNumber) {
+    audioChannels.push({
       audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
       audioResumeCallbacks: new Set(),
       audioStartCallbacks: new Set(),
@@ -44,46 +47,56 @@ export const queueAudio = async (
       queue: [],
       queueChangeCallbacks: new Set(),
       volume: 1.0
-    };
+    });
   }
 
+  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
   const audio: HTMLAudioElement = new Audio(audioUrl);
-  
-  // Apply audio configuration from options
-  if (options?.loop) {
-    audio.loop = true;
-  }
-  
-  if (options?.volume !== undefined) {
-    const clampedVolume: number = Math.max(0, Math.min(1, options.volume));
-    // Handle NaN case - default to channel volume or 1.0
-    const safeVolume: number = isNaN(clampedVolume) ? (audioChannels[channelNumber].volume || 1.0) : clampedVolume;
-    audio.volume = safeVolume;
-    // Also update the channel volume
-    audioChannels[channelNumber].volume = safeVolume;
-  } else {
-    // Use channel volume if no specific volume is set
-    const channelVolume: number = audioChannels[channelNumber].volume || 1.0;
-    audio.volume = channelVolume;
+
+  // Set up comprehensive error handling
+  setupAudioErrorHandling(audio, channelNumber, audioUrl, async (error: Error) => {
+    await handleAudioError(audio, channelNumber, audioUrl, error);
+  });
+
+  // Apply options if provided
+  if (options) {
+    if (typeof options.loop === 'boolean') {
+      audio.loop = options.loop;
+    }
+    if (typeof options.volume === 'number' && !isNaN(options.volume)) {
+      const clampedVolume = Math.max(0, Math.min(1, options.volume));
+      audio.volume = clampedVolume;
+      // Set channel volume to match the audio volume
+      channel.volume = clampedVolume;
+    }
   }
 
-  // Add to front or back of queue based on options
-  if ((options?.addToFront || options?.priority) && audioChannels[channelNumber].queue.length > 0) {
-    // Insert after the currently playing audio (index 1)
-    audioChannels[channelNumber].queue.splice(1, 0, audio);
-  } else if ((options?.addToFront || options?.priority) && audioChannels[channelNumber].queue.length === 0) {
-    // If queue is empty, just add normally
-    audioChannels[channelNumber].queue.push(audio);
+  // Handle priority option (same as addToFront for backward compatibility)
+  const shouldAddToFront = options?.addToFront || options?.priority;
+
+  // Add to queue based on priority/addToFront option
+  if (shouldAddToFront && channel.queue.length > 0) {
+    // Insert after currently playing track (at index 1)
+    channel.queue.splice(1, 0, audio);
+  } else if (shouldAddToFront) {
+    // If queue is empty, add to front
+    channel.queue.unshift(audio);
   } else {
-    // Default behavior - add to back of queue
-    audioChannels[channelNumber].queue.push(audio);
+    // Add to back of queue
+    channel.queue.push(audio);
   }
 
+  // Emit queue change event
   emitQueueChange(channelNumber, audioChannels);
 
-  if (audioChannels[channelNumber].queue.length === 1) {
-    // Don't await - let playback happen asynchronously
-    playAudioQueue(channelNumber).catch(console.error);
+  // Start playing if this is the first item and channel isn't paused
+  if (channel.queue.length === 1 && !channel.isPaused) {
+    // Use setTimeout to ensure the queue change event is emitted first
+    setTimeout(() => {
+      playAudioQueue(channelNumber).catch((error: Error) => {
+        handleAudioError(audio, channelNumber, audioUrl, error);
+      });
+    }, 0);
   }
 };
 
@@ -188,8 +201,11 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
       if (currentAudio.loop) {
         // For looping audio, reset current time and continue playing
         currentAudio.currentTime = 0;
-        await currentAudio.play();
-        // Don't remove from queue, but resolve the promise so tests don't hang
+        try {
+          await currentAudio.play();
+        } catch (error) {
+          await handleAudioError(currentAudio, channelNumber, currentAudio.src, error as Error);
+        }
         resolve();
       } else {
         // For non-looping audio, remove from queue and play next
@@ -213,7 +229,11 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
       metadataLoaded = true;
     }
 
-    currentAudio.play();
+    // Enhanced play with error handling
+    currentAudio.play().catch(async (error: Error) => {
+      await handleAudioError(currentAudio, channelNumber, currentAudio.src, error);
+      resolve(); // Resolve to prevent hanging
+    });
   });
 };
 
