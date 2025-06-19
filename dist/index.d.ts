@@ -10,4 +10,4 @@ export { clearVolumeDucking, getAllChannelsVolume, getChannelVolume, setAllChann
 export { getAllChannelsInfo, getCurrentAudioInfo, getQueueSnapshot, offAudioPause, offAudioProgress, offAudioResume, offQueueChange, onAudioComplete, onAudioPause, onAudioProgress, onAudioResume, onAudioStart, onQueueChange, } from './info';
 export { audioChannels } from './info';
 export { cleanWebpackFilename, createQueueSnapshot, extractFileName, getAudioInfoFromElement } from './utils';
-export type { AudioCompleteCallback, AudioCompleteInfo, AudioErrorCallback, AudioErrorInfo, AudioInfo, AudioPauseCallback, AudioQueueOptions, AudioResumeCallback, AudioStartCallback, AudioStartInfo, ErrorRecoveryOptions, ExtendedAudioQueueChannel, ProgressCallback, QueueChangeCallback, QueueSnapshot, RetryConfig, VolumeConfig } from './types';
+export type { AudioCompleteCallback, AudioCompleteInfo, AudioErrorCallback, AudioErrorInfo, AudioInfo, AudioPauseCallback, AudioQueueOptions, AudioResumeCallback, AudioStartCallback, AudioStartInfo, ErrorRecoveryOptions, ExtendedAudioQueueChannel, ProgressCallback, QueueChangeCallback, QueueItem, QueueSnapshot, RetryConfig, VolumeConfig } from './types';

@@ -84,6 +84,7 @@ export type {
   ExtendedAudioQueueChannel,
   ProgressCallback,
   QueueChangeCallback,
+  QueueItem,
   QueueSnapshot,
   RetryConfig,
   VolumeConfig 
