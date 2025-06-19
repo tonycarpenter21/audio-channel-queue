@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2025-01-16
+
+### Added - Enhanced Fade System & Type Safety Improvements 🎵
+- **🎛️ Improved Fade Types**: Enhanced fade options with consistent timing and better Linear support
+  - `Linear` - Steady, consistent fade (800ms, linear transition)
+  - `Gentle` - Smooth, subtle fade (800ms, ease-out → ease-in)
+  - `Dramatic` - Quick, pronounced fade (800ms, ease-in → ease-out)
+  - **Automatic pairing**: Resume operations use the complementary curve of the pause operation
+  - **No manual curve management**: Users just pick the feel they want, package handles the rest
+
+- **🎯 Enhanced Type Safety**: Converted string literal types to enums for better IntelliSense support
+  - `EasingType` enum with `Linear`, `EaseIn`, `EaseOut`, `EaseInOut` values
+  - `FadeType` enum with `Linear`, `Gentle`, `Dramatic` values
+  - **Backward compatibility**: Enum string values match previous literal types exactly
+
+- **🔧 Improved Configuration System**: Better fade and easing configuration management
+  - All fade configurations now use enum keys for consistency
+  - Enhanced `VolumeConfig.transitionEasing` to use `EasingType` enum
+  - Updated `FADE_CONFIGS` mapping to use enum property keys
+
+### Technical Improvements
+- **Backward compatibility maintained** - existing string usage continues to work
+- **Enhanced TypeScript definitions** for all enum types and related interfaces
+
 ## [1.7.0] - 2025-01-16
 
 ### Added - Comprehensive Error Handling & Recovery System 🚨
@@ -41,19 +65,13 @@ All notable changes to this project will be documented in this file.
   - `cleanWebpackFilename(filename)` - Clean up bundled filenames for better UX
 
 ### Changed - Code Quality & Architecture Improvements
-- **🧹 Production Code Cleanup**: Removed all test-specific logic from production code
-  - Eliminated Jest environment detection and mock preservation logic
-  - Removed test-specific timing adjustments and conditional behavior
-  - Clean separation between production functionality and test setup
   - Improved performance by removing unnecessary runtime checks
 
 - **⚡ Volume Transition Improvements**: More precise volume control behavior
-  - Fixed duration handling: Only instant changes for `duration === 0` (not `duration <= 5`)
   - Better API contract: Short durations (1-5ms) now execute as requested instead of instant
   - Improved test reliability through proper mocking instead of production code workarounds
 
 - **🏗️ Enhanced Test Architecture**: Better separation of concerns in testing
-  - Test-specific behavior handled in test setup files rather than production code
   - Proper Jest mock preservation through test utilities
   - Faster test execution with optimized setTimeout mocking for volume transitions
 

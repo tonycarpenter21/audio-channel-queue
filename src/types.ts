@@ -29,7 +29,7 @@ export interface VolumeConfig {
   /** Duration in milliseconds for volume restore transition (defaults to 500ms) */
   restoreTransitionDuration?: number;
   /** Easing function for volume transitions (defaults to 'ease-out') */
-  transitionEasing?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+  transitionEasing?: EasingType;
 }
 
 /**
@@ -226,6 +226,7 @@ export interface ExtendedAudioQueueChannel {
   audioPauseCallbacks: Set<AudioPauseCallback>;
   audioResumeCallbacks: Set<AudioResumeCallback>;
   audioStartCallbacks: Set<AudioStartCallback>;
+  fadeState?: ChannelFadeState;
   isPaused?: boolean;
   progressCallbacks: Map<HTMLAudioElement | null, Set<ProgressCallback>>;
   queue: HTMLAudioElement[];
@@ -233,4 +234,47 @@ export interface ExtendedAudioQueueChannel {
   retryConfig?: RetryConfig;
   volume?: number;
   volumeConfig?: VolumeConfig;
+}
+
+/**
+ * Easing function types for volume transitions
+ */
+export enum EasingType {
+  Linear = 'linear',
+  EaseIn = 'ease-in',
+  EaseOut = 'ease-out',
+  EaseInOut = 'ease-in-out'
+}
+
+/**
+ * Fade type for pause/resume operations with integrated volume transitions
+ */
+export enum FadeType {
+  Linear = 'linear',
+  Gentle = 'gentle',
+  Dramatic = 'dramatic'
+}
+
+/**
+ * Configuration for fade transitions
+ */
+export interface FadeConfig {
+  /** Duration in milliseconds for the fade transition */
+  duration: number;
+  /** Easing curve to use when pausing (fading out) */
+  pauseCurve: EasingType;
+  /** Easing curve to use when resuming (fading in) */
+  resumeCurve: EasingType;
+}
+
+/**
+ * Internal fade state tracking for pause/resume with fade functionality
+ */
+export interface ChannelFadeState {
+  /** The original volume level before fading began */
+  originalVolume: number;
+  /** The type of fade being used */
+  fadeType: FadeType;
+  /** Whether the channel is currently paused due to fade */
+  isPaused: boolean;
 } 

@@ -10,7 +10,13 @@ import {
   resumeAllChannels,
   togglePauseAllChannels,
   isChannelPaused,
-  getAllChannelsPauseState
+  getAllChannelsPauseState,
+  pauseWithFade,
+  resumeWithFade,
+  togglePauseWithFade,
+  pauseAllWithFade,
+  resumeAllWithFade,
+  togglePauseAllWithFade
 } from '../src/pause';
 import {
   onAudioPause,
@@ -19,7 +25,8 @@ import {
 } from '../src/info';
 import { queueAudio } from '../src/core';
 import { MockAudioElement, mockCallback, waitForPromises } from './setup';
-import { AudioInfo } from '../src/types';
+import { AudioInfo, FadeType, EasingType } from '../src/types';
+import { getFadeConfig } from '../src/volume';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -109,8 +116,279 @@ describe('Pause/Resume Functionality', () => {
 
       expect(mockAudio.pause).toHaveBeenCalled();
       expect(audioChannels[0].isPaused).toBe(true);
+      });
+
+  describe('Fade Integration Tests', () => {
+    describe('pauseWithFade', () => {
+      it('should pause with gentle fade by default', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        mockAudio.paused = false;
+        mockAudio.volume = 0.8;
+        audioChannels[0].volume = 0.8;
+
+        await pauseWithFade(FadeType.Gentle, 0);
+
+        expect(mockAudio.pause).toHaveBeenCalled();
+        expect(audioChannels[0].isPaused).toBe(true);
+        expect(audioChannels[0].fadeState).toEqual({
+          originalVolume: 0.8,
+          fadeType: FadeType.Gentle,
+          isPaused: true
+        });
+        expect(audioChannels[0].volume).toBe(0.8); // Volume should be restored
+      });
+
+      it('should pause with dramatic fade', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        mockAudio.paused = false;
+        mockAudio.volume = 1.0;
+        audioChannels[0].volume = 1.0;
+
+        await pauseWithFade(FadeType.Dramatic, 0);
+
+        expect(mockAudio.pause).toHaveBeenCalled();
+        expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Dramatic);
+        expect(audioChannels[0].fadeState?.originalVolume).toBe(1.0);
+      });
+
+      it('should pause instantly with instant fade type', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        mockAudio.paused = false;
+
+        await pauseWithFade(FadeType.Linear, 0);
+
+        expect(mockAudio.pause).toHaveBeenCalled();
+        expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Linear);
+      });
+
+      it('should not pause if already paused', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        mockAudio.paused = true;
+
+        await pauseWithFade(FadeType.Gentle, 0);
+
+        expect(audioChannels[0].fadeState).toBeUndefined();
+      });
+
+      it('should handle non-existent channel gracefully', async () => {
+        await expect(pauseWithFade(FadeType.Gentle, 99)).resolves.not.toThrow();
+      });
+    });
+
+    describe('resumeWithFade', () => {
+      it('should resume with complementary fade curve', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        
+        // First pause with fade to set up state
+        mockAudio.paused = false;
+        audioChannels[0].volume = 0.7;
+        await pauseWithFade(FadeType.Gentle, 0);
+        
+        // Now test resume
+        await resumeWithFade(undefined, 0);
+
+        expect(mockAudio.play).toHaveBeenCalled();
+        expect(audioChannels[0].isPaused).toBe(false);
+        expect(audioChannels[0].fadeState?.isPaused).toBe(false);
+      });
+
+      it('should fall back to regular resume if no fade state', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        mockAudio.paused = true;
+        audioChannels[0].isPaused = true;
+
+        await resumeWithFade(undefined, 0);
+
+        expect(mockAudio.play).toHaveBeenCalled();
+        expect(audioChannels[0].isPaused).toBe(false);
+      });
+
+      it('should handle instant resume correctly', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        
+        // Set up instant fade state
+        mockAudio.paused = false;
+        await pauseWithFade(FadeType.Linear, 0);
+        
+        await resumeWithFade(undefined, 0);
+
+        expect(mockAudio.play).toHaveBeenCalled();
+        expect(audioChannels[0].fadeState?.isPaused).toBe(false);
+      });
+
+      it('should handle non-existent channel gracefully', async () => {
+        await expect(resumeWithFade(undefined, 99)).resolves.not.toThrow();
+      });
+
+      it('should allow fadeType override', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        
+        // Pause with gentle fade
+        mockAudio.paused = false;
+        audioChannels[0].volume = 0.7;
+        await pauseWithFade(FadeType.Gentle, 0);
+        
+        // Resume with dramatic fade override
+        await resumeWithFade(FadeType.Dramatic, 0);
+
+        expect(mockAudio.play).toHaveBeenCalled();
+        expect(audioChannels[0].isPaused).toBe(false);
+        expect(audioChannels[0].fadeState?.isPaused).toBe(false);
+        // The original fade state should still show Gentle, but Dramatic was used for resume
+        expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Gentle);
+      });
+    });
+
+    describe('togglePauseWithFade', () => {
+      it('should pause when currently playing', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        mockAudio.paused = false;
+
+        await togglePauseWithFade(FadeType.Dramatic, 0);
+
+        expect(mockAudio.pause).toHaveBeenCalled();
+        expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Dramatic);
+      });
+
+      it('should resume when currently paused', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        
+        // Set up paused state with fade
+        mockAudio.paused = false;
+        await pauseWithFade(FadeType.Gentle, 0);
+        
+        await togglePauseWithFade(FadeType.Dramatic, 0);
+
+        expect(mockAudio.play).toHaveBeenCalled();
+        expect(audioChannels[0].fadeState?.isPaused).toBe(false);
+      });
+    });
+
+    describe('Multi-channel fade functions', () => {
+      beforeEach(async () => {
+        // Set up multiple channels
+        await queueAudio('test1.mp3', 0);
+        await queueAudio('test2.mp3', 1);
+        await queueAudio('test3.mp3', 2);
+      });
+
+      it('should pause all channels with fade', async () => {
+        const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+        const mockAudio2 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+        
+        mockAudio0.paused = false;
+        mockAudio1.paused = false;
+        mockAudio2.paused = false;
+
+        await pauseAllWithFade(FadeType.Dramatic);
+
+        expect(mockAudio0.pause).toHaveBeenCalled();
+        expect(mockAudio1.pause).toHaveBeenCalled();
+        expect(mockAudio2.pause).toHaveBeenCalled();
+        expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Dramatic);
+        expect(audioChannels[1].fadeState?.fadeType).toBe(FadeType.Dramatic);
+        expect(audioChannels[2].fadeState?.fadeType).toBe(FadeType.Dramatic);
+      });
+
+      it('should resume all channels with fade', async () => {
+        // First pause all with fade
+        const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+        const mockAudio2 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+        
+        mockAudio0.paused = false;
+        mockAudio1.paused = false;
+        mockAudio2.paused = false;
+        
+        await pauseAllWithFade(FadeType.Gentle);
+        
+        // Clear the play mocks
+        mockAudio0.play.mockClear();
+        mockAudio1.play.mockClear();
+        mockAudio2.play.mockClear();
+        
+        await resumeAllWithFade();
+
+        expect(mockAudio0.play).toHaveBeenCalled();
+        expect(mockAudio1.play).toHaveBeenCalled();
+        expect(mockAudio2.play).toHaveBeenCalled();
+      });
+
+      it('should toggle all channels with fade', async () => {
+        const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+        const mockAudio2 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+        
+        mockAudio0.paused = false;
+        mockAudio1.paused = false;
+        mockAudio2.paused = true; // One paused, others playing
+
+        await togglePauseAllWithFade(FadeType.Gentle);
+
+        // Should pause all because some were playing
+        expect(mockAudio0.pause).toHaveBeenCalled();
+        expect(mockAudio1.pause).toHaveBeenCalled();
+      });
+    });
+
+    describe('Fade configuration', () => {
+      it('should use correct fade configurations', () => {
+        const instantConfig = getFadeConfig(FadeType.Linear);
+        expect(instantConfig.duration).toBe(800);
+        expect(instantConfig.pauseCurve).toBe(EasingType.Linear);
+        expect(instantConfig.resumeCurve).toBe(EasingType.Linear);
+
+        const gentleConfig = getFadeConfig(FadeType.Gentle);
+        expect(gentleConfig.duration).toBe(800);
+        expect(gentleConfig.pauseCurve).toBe(EasingType.EaseOut);
+        expect(gentleConfig.resumeCurve).toBe(EasingType.EaseIn);
+
+        const dramaticConfig = getFadeConfig(FadeType.Dramatic);
+        expect(dramaticConfig.duration).toBe(800);
+        expect(dramaticConfig.pauseCurve).toBe(EasingType.EaseIn);
+        expect(dramaticConfig.resumeCurve).toBe(EasingType.EaseOut);
+      });
+
+      it('should return a copy of the config to prevent mutation', () => {
+        const config1 = getFadeConfig(FadeType.Gentle);
+        const config2 = getFadeConfig(FadeType.Gentle);
+        
+        config1.duration = 999;
+        expect(config2.duration).toBe(800); // Should not be affected
+      });
+    });
+
+    describe('State synchronization', () => {
+      it('should maintain volume state synchronously during fade operations', async () => {
+        await queueAudio('test.mp3', 0);
+        const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+        mockAudio.paused = false;
+        audioChannels[0].volume = 0.8;
+
+        await pauseWithFade(FadeType.Gentle, 0);
+        
+        // Volume should be restored immediately after pause
+        expect(audioChannels[0].volume).toBe(0.8);
+        
+        await resumeWithFade(undefined, 0);
+        
+        // Volume should end up at original level
+        expect(audioChannels[0].volume).toBe(0.8);
+      });
     });
   });
+});
 
   describe('resumeChannel', () => {
     it('should resume paused audio', async () => {

@@ -16,7 +16,7 @@ import {
 import { audioChannels } from '../src/info';
 import { queueAudio } from '../src/core';
 import { MockAudioElement, waitForPromises, mockCallback, expectVolumeToBeCloseTo } from './setup';
-import { VolumeConfig } from '../src/types';
+import { VolumeConfig, EasingType } from '../src/types';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -237,7 +237,7 @@ describe('Volume Ducking', () => {
         duckingVolume: 0.2,
         duckTransitionDuration: 300,
         restoreTransitionDuration: 500,
-        transitionEasing: 'ease-out'
+        transitionEasing: EasingType.EaseOut
       };
 
       setVolumeDucking(config);
@@ -402,7 +402,7 @@ describe('Volume Ducking', () => {
       audioChannels[0].volume = 1.0;
 
       // Test linear easing with very short duration
-      await setChannelVolume(0, 0.5, 1, 'linear');
+      await setChannelVolume(0, 0.5, 1, EasingType.Linear);
       expect(audioChannels[0].volume).toBe(0.5);
     });
   });

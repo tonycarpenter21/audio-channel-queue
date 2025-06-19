@@ -12,18 +12,41 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restoreVolumeLevels = exports.applyVolumeDucking = exports.clearVolumeDucking = exports.setVolumeDucking = exports.setAllChannelsVolume = exports.getAllChannelsVolume = exports.getChannelVolume = exports.setChannelVolume = exports.transitionVolume = void 0;
+exports.restoreVolumeLevels = exports.fadeVolume = exports.applyVolumeDucking = exports.clearVolumeDucking = exports.setVolumeDucking = exports.setAllChannelsVolume = exports.getAllChannelsVolume = exports.getChannelVolume = exports.setChannelVolume = exports.transitionVolume = exports.getFadeConfig = void 0;
+const types_1 = require("./types");
 const info_1 = require("./info");
 // Store active volume transitions to handle interruptions
 const activeTransitions = new Map();
 /**
+ * Predefined fade configurations for different transition types
+ */
+const FADE_CONFIGS = {
+    [types_1.FadeType.Dramatic]: { duration: 800, pauseCurve: types_1.EasingType.EaseIn, resumeCurve: types_1.EasingType.EaseOut },
+    [types_1.FadeType.Gentle]: { duration: 800, pauseCurve: types_1.EasingType.EaseOut, resumeCurve: types_1.EasingType.EaseIn },
+    [types_1.FadeType.Linear]: { duration: 800, pauseCurve: types_1.EasingType.Linear, resumeCurve: types_1.EasingType.Linear }
+};
+/**
+ * Gets the fade configuration for a specific fade type
+ * @param fadeType - The fade type to get configuration for
+ * @returns Fade configuration object
+ * @example
+ * ```typescript
+ * const config = getFadeConfig('gentle');
+ * console.log(`Gentle fade duration: ${config.duration}ms`);
+ * ```
+ */
+const getFadeConfig = (fadeType) => {
+    return Object.assign({}, FADE_CONFIGS[fadeType]);
+};
+exports.getFadeConfig = getFadeConfig;
+/**
  * Easing functions for smooth volume transitions
  */
 const easingFunctions = {
-    linear: (t) => t,
-    'ease-in': (t) => t * t,
-    'ease-out': (t) => t * (2 - t),
-    'ease-in-out': (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    [types_1.EasingType.Linear]: (t) => t,
+    [types_1.EasingType.EaseIn]: (t) => t * t,
+    [types_1.EasingType.EaseOut]: (t) => t * (2 - t),
+    [types_1.EasingType.EaseInOut]: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 };
 /**
  * Smoothly transitions volume for a specific channel over time
@@ -37,7 +60,7 @@ const easingFunctions = {
  * await transitionVolume(0, 0.2, 500, 'ease-out'); // Duck to 20% over 500ms
  * ```
  */
-const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __awaiter(void 0, [channelNumber_1, targetVolume_1, ...args_1], void 0, function* (channelNumber, targetVolume, duration = 250, easing = 'ease-out') {
+const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __awaiter(void 0, [channelNumber_1, targetVolume_1, ...args_1], void 0, function* (channelNumber, targetVolume, duration = 250, easing = types_1.EasingType.EaseOut) {
     const channel = info_1.audioChannels[channelNumber];
     if (!channel || channel.queue.length === 0)
         return;
@@ -266,7 +289,7 @@ const applyVolumeDucking = (activeChannelNumber) => __awaiter(void 0, void 0, vo
             const config = channel.volumeConfig;
             if (activeChannelNumber === config.priorityChannel) {
                 const duration = config.duckTransitionDuration || 250;
-                const easing = config.transitionEasing || 'ease-out';
+                const easing = config.transitionEasing || types_1.EasingType.EaseOut;
                 // Priority channel is active, duck other channels
                 if (channelNumber === config.priorityChannel) {
                     transitionPromises.push((0, exports.transitionVolume)(channelNumber, config.priorityVolume, duration, easing));
@@ -282,6 +305,23 @@ const applyVolumeDucking = (activeChannelNumber) => __awaiter(void 0, void 0, vo
 });
 exports.applyVolumeDucking = applyVolumeDucking;
 /**
+ * Fades the volume for a specific channel over time (alias for transitionVolume with improved naming)
+ * @param channelNumber - The channel number to fade
+ * @param targetVolume - Target volume level (0-1)
+ * @param duration - Fade duration in milliseconds (defaults to 250)
+ * @param easing - Easing function type (defaults to 'ease-out')
+ * @returns Promise that resolves when fade completes
+ * @example
+ * ```typescript
+ * await fadeVolume(0, 0, 800, 'ease-in'); // Fade out over 800ms
+ * await fadeVolume(0, 1, 600, 'ease-out'); // Fade in over 600ms
+ * ```
+ */
+const fadeVolume = (channelNumber_1, targetVolume_1, ...args_1) => __awaiter(void 0, [channelNumber_1, targetVolume_1, ...args_1], void 0, function* (channelNumber, targetVolume, duration = 250, easing = types_1.EasingType.EaseOut) {
+    return (0, exports.transitionVolume)(channelNumber, targetVolume, duration, easing);
+});
+exports.fadeVolume = fadeVolume;
+/**
  * Restores normal volume levels when priority channel stops with smooth transitions
  * @param stoppedChannelNumber - The channel that just stopped playing
  * @internal
@@ -293,7 +333,7 @@ const restoreVolumeLevels = (stoppedChannelNumber) => __awaiter(void 0, void 0, 
             const config = channel.volumeConfig;
             if (stoppedChannelNumber === config.priorityChannel) {
                 const duration = config.restoreTransitionDuration || 500;
-                const easing = config.transitionEasing || 'ease-out';
+                const easing = config.transitionEasing || types_1.EasingType.EaseOut;
                 // Priority channel stopped, restore normal volumes
                 transitionPromises.push((0, exports.transitionVolume)(channelNumber, channel.volume || 1.0, duration, easing));
             }

@@ -1,7 +1,18 @@
 /**
  * @fileoverview Volume management functions for the audio-channel-queue package
  */
-import { VolumeConfig } from './types';
+import { VolumeConfig, FadeType, FadeConfig, EasingType } from './types';
+/**
+ * Gets the fade configuration for a specific fade type
+ * @param fadeType - The fade type to get configuration for
+ * @returns Fade configuration object
+ * @example
+ * ```typescript
+ * const config = getFadeConfig('gentle');
+ * console.log(`Gentle fade duration: ${config.duration}ms`);
+ * ```
+ */
+export declare const getFadeConfig: (fadeType: FadeType) => FadeConfig;
 /**
  * Smoothly transitions volume for a specific channel over time
  * @param channelNumber - The channel number to transition
@@ -14,7 +25,7 @@ import { VolumeConfig } from './types';
  * await transitionVolume(0, 0.2, 500, 'ease-out'); // Duck to 20% over 500ms
  * ```
  */
-export declare const transitionVolume: (channelNumber: number, targetVolume: number, duration?: number, easing?: "linear" | "ease-in" | "ease-out" | "ease-in-out") => Promise<void>;
+export declare const transitionVolume: (channelNumber: number, targetVolume: number, duration?: number, easing?: EasingType) => Promise<void>;
 /**
  * Sets the volume for a specific channel with optional smooth transition
  * @param channelNumber - The channel number to set volume for
@@ -27,7 +38,7 @@ export declare const transitionVolume: (channelNumber: number, targetVolume: num
  * setChannelVolume(0, 0.5, 300, 'ease-out'); // Smooth transition over 300ms
  * ```
  */
-export declare const setChannelVolume: (channelNumber: number, volume: number, transitionDuration?: number, easing?: "linear" | "ease-in" | "ease-out" | "ease-in-out") => Promise<void>;
+export declare const setChannelVolume: (channelNumber: number, volume: number, transitionDuration?: number, easing?: EasingType) => Promise<void>;
 /**
  * Gets the current volume for a specific channel
  * @param channelNumber - The channel number to get volume for (defaults to 0)
@@ -90,6 +101,20 @@ export declare const clearVolumeDucking: () => void;
  * @internal
  */
 export declare const applyVolumeDucking: (activeChannelNumber: number) => Promise<void>;
+/**
+ * Fades the volume for a specific channel over time (alias for transitionVolume with improved naming)
+ * @param channelNumber - The channel number to fade
+ * @param targetVolume - Target volume level (0-1)
+ * @param duration - Fade duration in milliseconds (defaults to 250)
+ * @param easing - Easing function type (defaults to 'ease-out')
+ * @returns Promise that resolves when fade completes
+ * @example
+ * ```typescript
+ * await fadeVolume(0, 0, 800, 'ease-in'); // Fade out over 800ms
+ * await fadeVolume(0, 1, 600, 'ease-out'); // Fade in over 600ms
+ * ```
+ */
+export declare const fadeVolume: (channelNumber: number, targetVolume: number, duration?: number, easing?: EasingType) => Promise<void>;
 /**
  * Restores normal volume levels when priority channel stops with smooth transitions
  * @param stoppedChannelNumber - The channel that just stopped playing

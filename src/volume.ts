@@ -2,20 +2,43 @@
  * @fileoverview Volume management functions for the audio-channel-queue package
  */
 
-import { ExtendedAudioQueueChannel, VolumeConfig } from './types';
+import { ExtendedAudioQueueChannel, VolumeConfig, FadeType, FadeConfig, EasingType } from './types';
 import { audioChannels } from './info';
 
 // Store active volume transitions to handle interruptions
 const activeTransitions = new Map<number, number>();
 
 /**
+ * Predefined fade configurations for different transition types
+ */
+const FADE_CONFIGS: Record<FadeType, FadeConfig> = {
+  [FadeType.Dramatic]: { duration: 800, pauseCurve: EasingType.EaseIn, resumeCurve: EasingType.EaseOut },
+  [FadeType.Gentle]: { duration: 800, pauseCurve: EasingType.EaseOut, resumeCurve: EasingType.EaseIn },
+  [FadeType.Linear]: { duration: 800, pauseCurve: EasingType.Linear, resumeCurve: EasingType.Linear }
+};
+
+/**
+ * Gets the fade configuration for a specific fade type
+ * @param fadeType - The fade type to get configuration for
+ * @returns Fade configuration object
+ * @example
+ * ```typescript
+ * const config = getFadeConfig('gentle');
+ * console.log(`Gentle fade duration: ${config.duration}ms`);
+ * ```
+ */
+export const getFadeConfig = (fadeType: FadeType): FadeConfig => {
+  return { ...FADE_CONFIGS[fadeType] };
+};
+
+/**
  * Easing functions for smooth volume transitions
  */
-const easingFunctions = {
-  linear: (t: number): number => t,
-  'ease-in': (t: number): number => t * t,
-  'ease-out': (t: number): number => t * (2 - t),
-  'ease-in-out': (t: number): number => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+const easingFunctions: Record<EasingType, (t: number) => number> = {
+  [EasingType.Linear]: (t: number): number => t,
+  [EasingType.EaseIn]: (t: number): number => t * t,
+  [EasingType.EaseOut]: (t: number): number => t * (2 - t),
+  [EasingType.EaseInOut]: (t: number): number => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 };
 
 /**
@@ -34,7 +57,7 @@ export const transitionVolume = async (
   channelNumber: number,
   targetVolume: number,
   duration: number = 250,
-  easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' = 'ease-out'
+  easing: EasingType = EasingType.EaseOut
 ): Promise<void> => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
   if (!channel || channel.queue.length === 0) return;
@@ -119,7 +142,7 @@ export const setChannelVolume = async (
   channelNumber: number, 
   volume: number,
   transitionDuration?: number,
-  easing?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out'
+  easing?: EasingType
 ): Promise<void> => {
   const clampedVolume: number = Math.max(0, Math.min(1, volume));
   
@@ -282,7 +305,7 @@ export const applyVolumeDucking = async (activeChannelNumber: number): Promise<v
       
       if (activeChannelNumber === config.priorityChannel) {
         const duration = config.duckTransitionDuration || 250;
-        const easing = config.transitionEasing || 'ease-out';
+        const easing = config.transitionEasing || EasingType.EaseOut;
         
         // Priority channel is active, duck other channels
         if (channelNumber === config.priorityChannel) {
@@ -298,9 +321,31 @@ export const applyVolumeDucking = async (activeChannelNumber: number): Promise<v
     }
   });
 
-  // Wait for all transitions to complete
+    // Wait for all transitions to complete
   await Promise.all(transitionPromises);
 };
+
+/**
+ * Fades the volume for a specific channel over time (alias for transitionVolume with improved naming)
+ * @param channelNumber - The channel number to fade
+ * @param targetVolume - Target volume level (0-1)
+ * @param duration - Fade duration in milliseconds (defaults to 250)
+ * @param easing - Easing function type (defaults to 'ease-out')
+ * @returns Promise that resolves when fade completes
+ * @example
+ * ```typescript
+ * await fadeVolume(0, 0, 800, 'ease-in'); // Fade out over 800ms
+ * await fadeVolume(0, 1, 600, 'ease-out'); // Fade in over 600ms
+ * ```
+ */
+export const fadeVolume = async (
+  channelNumber: number,
+  targetVolume: number,
+  duration: number = 250,
+  easing: EasingType = EasingType.EaseOut
+): Promise<void> => {
+  return transitionVolume(channelNumber, targetVolume, duration, easing);
+}; 
 
 /**
  * Restores normal volume levels when priority channel stops with smooth transitions
@@ -316,7 +361,7 @@ export const restoreVolumeLevels = async (stoppedChannelNumber: number): Promise
       
       if (stoppedChannelNumber === config.priorityChannel) {
         const duration = config.restoreTransitionDuration || 500;
-        const easing = config.transitionEasing || 'ease-out';
+        const easing = config.transitionEasing || EasingType.EaseOut;
         
         // Priority channel stopped, restore normal volumes
         transitionPromises.push(

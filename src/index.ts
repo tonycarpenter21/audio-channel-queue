@@ -23,21 +23,30 @@ export {
   getAllChannelsPauseState, 
   isChannelPaused, 
   pauseAllChannels, 
+  pauseAllWithFade,
   pauseChannel, 
+  pauseWithFade,
   resumeAllChannels, 
+  resumeAllWithFade,
   resumeChannel, 
+  resumeWithFade,
   togglePauseAllChannels,
-  togglePauseChannel, 
+  togglePauseAllWithFade,
+  togglePauseChannel,
+  togglePauseWithFade,
 } from './pause';
 
 // Volume control and ducking functions
 export { 
   clearVolumeDucking,
+  fadeVolume,
   getAllChannelsVolume, 
   getChannelVolume, 
+  getFadeConfig,
   setAllChannelsVolume, 
   setChannelVolume, 
-  setVolumeDucking, 
+  setVolumeDucking,
+  transitionVolume,
 } from './volume';
 
 // Audio information and progress tracking functions
@@ -80,12 +89,20 @@ export type {
   AudioResumeCallback,
   AudioStartCallback,
   AudioStartInfo,
+  ChannelFadeState,
   ErrorRecoveryOptions,
   ExtendedAudioQueueChannel,
+  FadeConfig,
   ProgressCallback,
   QueueChangeCallback,
   QueueItem,
   QueueSnapshot,
   RetryConfig,
   VolumeConfig 
+} from './types';
+
+// Enums
+export { 
+  EasingType,
+  FadeType 
 } from './types'; 

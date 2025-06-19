@@ -1,6 +1,77 @@
 /**
  * @fileoverview Pause and resume management functions for the audio-channel-queue package
  */
+import { FadeType } from './types';
+/**
+ * Pauses the currently playing audio in a specific channel with smooth volume fade
+ * @param fadeType - Type of fade transition to apply
+ * @param channelNumber - The channel number to pause (defaults to 0)
+ * @returns Promise that resolves when the pause and fade are complete
+ * @example
+ * ```typescript
+ * await pauseWithFade(FadeType.Gentle, 0); // Pause with gentle fade out over 800ms
+ * await pauseWithFade(FadeType.Dramatic, 1); // Pause with dramatic fade out over 800ms
+ * await pauseWithFade(FadeType.Linear, 2); // Linear pause with 800ms fade
+ * ```
+ */
+export declare const pauseWithFade: (fadeType?: FadeType, channelNumber?: number) => Promise<void>;
+/**
+ * Resumes the currently paused audio in a specific channel with smooth volume fade
+ * Uses the complementary fade curve automatically based on the pause fade type, or allows override
+ * @param fadeType - Optional fade type to override the stored fade type from pause
+ * @param channelNumber - The channel number to resume (defaults to 0)
+ * @returns Promise that resolves when the resume and fade are complete
+ * @example
+ * ```typescript
+ * await resumeWithFade(); // Resume with automatically paired fade curve from pause
+ * await resumeWithFade(FadeType.Dramatic, 0); // Override with dramatic fade
+ * await resumeWithFade(FadeType.Linear); // Override with linear fade on default channel
+ * ```
+ */
+export declare const resumeWithFade: (fadeType?: FadeType, channelNumber?: number) => Promise<void>;
+/**
+ * Toggles pause/resume state for a specific channel with integrated fade
+ * @param fadeType - Type of fade transition to apply when pausing
+ * @param channelNumber - The channel number to toggle (defaults to 0)
+ * @returns Promise that resolves when the toggle and fade are complete
+ * @example
+ * ```typescript
+ * await togglePauseWithFade(FadeType.Gentle, 0); // Toggle with gentle fade
+ * ```
+ */
+export declare const togglePauseWithFade: (fadeType?: FadeType, channelNumber?: number) => Promise<void>;
+/**
+ * Pauses all currently playing audio across all channels with smooth volume fade
+ * @param fadeType - Type of fade transition to apply to all channels
+ * @returns Promise that resolves when all channels are paused and faded
+ * @example
+ * ```typescript
+ * await pauseAllWithFade('dramatic'); // Pause everything with dramatic fade
+ * ```
+ */
+export declare const pauseAllWithFade: (fadeType?: FadeType) => Promise<void>;
+/**
+ * Resumes all currently paused audio across all channels with smooth volume fade
+ * Uses automatically paired fade curves based on each channel's pause fade type
+ * @returns Promise that resolves when all channels are resumed and faded
+ * @example
+ * ```typescript
+ * await resumeAllWithFade(); // Resume everything with paired fade curves
+ * ```
+ */
+export declare const resumeAllWithFade: () => Promise<void>;
+/**
+ * Toggles pause/resume state for all channels with integrated fade
+ * If any channels are playing, all will be paused with fade
+ * If all channels are paused, all will be resumed with fade
+ * @param fadeType - Type of fade transition to apply when pausing
+ * @returns Promise that resolves when all toggles and fades are complete
+ * @example
+ * ```typescript
+ * await togglePauseAllWithFade('gentle'); // Global toggle with gentle fade
+ * ```
+ */
+export declare const togglePauseAllWithFade: (fadeType?: FadeType) => Promise<void>;
 /**
  * Pauses the currently playing audio in a specific channel
  * @param channelNumber - The channel number to pause (defaults to 0)
