@@ -56,7 +56,7 @@ const setChannelVolumeSync = (channelNumber, volume) => {
  * ```
  */
 const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, channelNumber = 0, duration) {
-    var _a, _b;
+    var _a, _b, _c;
     const channel = info_1.audioChannels[channelNumber];
     if (!channel || channel.queue.length === 0)
         return;
@@ -65,11 +65,11 @@ const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, func
     if (currentAudio.paused || currentAudio.ended)
         return;
     const config = (0, volume_1.getFadeConfig)(fadeType);
-    const effectiveDuration = duration !== undefined ? duration : config.duration;
+    const effectiveDuration = duration !== null && duration !== void 0 ? duration : config.duration;
     // Race condition fix: Use existing fadeState originalVolume if already transitioning,
     // otherwise capture current volume
     let originalVolume;
-    if (channel.fadeState && channel.fadeState.isTransitioning) {
+    if ((_a = channel.fadeState) === null || _a === void 0 ? void 0 : _a.isTransitioning) {
         // We're already in any kind of transition (pause or resume), preserve original volume
         originalVolume = channel.fadeState.originalVolume;
     }
@@ -77,19 +77,21 @@ const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, func
         // First fade or no transition in progress, capture current volume
         // But ensure we don't capture a volume of 0 during a transition
         const currentVolume = getChannelVolumeSync(channelNumber);
-        originalVolume = currentVolume > 0 ? currentVolume : (_b = (_a = channel.fadeState) === null || _a === void 0 ? void 0 : _a.originalVolume) !== null && _b !== void 0 ? _b : 1.0;
+        originalVolume = currentVolume > 0 ? currentVolume : (_c = (_b = channel.fadeState) === null || _b === void 0 ? void 0 : _b.originalVolume) !== null && _c !== void 0 ? _c : 1.0;
     }
     // Store fade state for resumeWithFade to use (including custom duration)
     channel.fadeState = {
-        originalVolume,
+        customDuration: duration,
         fadeType,
         isPaused: true,
         isTransitioning: true,
-        customDuration: duration
+        originalVolume
     };
     if (effectiveDuration === 0) {
         // Instant pause
         yield (0, exports.pauseChannel)(channelNumber);
+        // Reset volume to original for resume (synchronously to avoid state issues)
+        setChannelVolumeSync(channelNumber, originalVolume);
         // Mark transition as complete for instant pause
         if (channel.fadeState) {
             channel.fadeState.isTransitioning = false;
@@ -126,7 +128,7 @@ const resumeWithFade = (fadeType_1, ...args_1) => __awaiter(void 0, [fadeType_1,
     if (!channel || channel.queue.length === 0)
         return;
     const fadeState = channel.fadeState;
-    if (!fadeState || !fadeState.isPaused) {
+    if (!(fadeState === null || fadeState === void 0 ? void 0 : fadeState.isPaused)) {
         // Fall back to regular resume if no fade state
         yield (0, exports.resumeChannel)(channelNumber);
         return;
@@ -147,6 +149,8 @@ const resumeWithFade = (fadeType_1, ...args_1) => __awaiter(void 0, [fadeType_1,
     }
     if (effectiveDuration === 0) {
         // Instant resume
+        const targetVolume = fadeState.originalVolume > 0 ? fadeState.originalVolume : 1.0;
+        setChannelVolumeSync(channelNumber, targetVolume);
         yield (0, exports.resumeChannel)(channelNumber);
         fadeState.isPaused = false;
         fadeState.isTransitioning = false;

@@ -13,9 +13,9 @@ export type AudioQueue = HTMLAudioElement[];
 /**
  * Basic audio queue channel structure
  */
-export type AudioQueueChannel = {
+export interface AudioQueueChannel {
     queue: AudioQueue;
-};
+}
 /**
  * Volume ducking configuration for channels
  */

@@ -39,19 +39,19 @@ exports.createProtectedAudioElement = exports.handleAudioError = exports.setupAu
 const info_1 = require("./info");
 const utils_1 = require("./utils");
 let globalRetryConfig = {
-    enabled: true,
-    maxRetries: 3,
     baseDelay: 1000,
+    enabled: true,
     exponentialBackoff: true,
-    timeoutMs: 10000,
-    skipOnFailure: false
+    maxRetries: 3,
+    skipOnFailure: false,
+    timeoutMs: 10000
 };
 let globalErrorRecovery = {
     autoRetry: true,
-    showUserFeedback: false,
+    fallbackToNextTrack: true,
     logErrorsToAnalytics: false,
     preserveQueueOnError: true,
-    fallbackToNextTrack: true
+    showUserFeedback: false
 };
 const retryAttempts = new WeakMap();
 const loadTimeouts = new WeakMap();
@@ -377,13 +377,13 @@ const handleAudioError = (audio, channelNumber, originalUrl, error) => __awaiter
     const retryConfig = (_b = channel.retryConfig) !== null && _b !== void 0 ? _b : globalRetryConfig;
     const errorInfo = {
         channelNumber,
-        src: originalUrl,
-        fileName: (0, utils_1.extractFileName)(originalUrl),
         error,
         errorType: (0, exports.categorizeError)(error, audio),
-        timestamp: Date.now(),
+        fileName: (0, utils_1.extractFileName)(originalUrl),
+        remainingInQueue: channel.queue.length - 1,
         retryAttempt: currentAttempts,
-        remainingInQueue: channel.queue.length - 1
+        src: originalUrl,
+        timestamp: Date.now()
     };
     // Emit error event
     (0, exports.emitAudioError)(channelNumber, errorInfo, info_1.audioChannels);

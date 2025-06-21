@@ -17,7 +17,7 @@ const utils_1 = require("./utils");
  */
 const emitQueueChange = (channelNumber, audioChannels) => {
     const channel = audioChannels[channelNumber];
-    if (!channel || !channel.queueChangeCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.queueChangeCallbacks))
         return;
     const snapshot = (0, utils_1.createQueueSnapshot)(channelNumber, audioChannels);
     if (!snapshot)
@@ -45,7 +45,7 @@ exports.emitQueueChange = emitQueueChange;
  */
 const emitAudioStart = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
-    if (!channel || !channel.audioStartCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioStartCallbacks))
         return;
     channel.audioStartCallbacks.forEach((callback) => {
         try {
@@ -70,7 +70,7 @@ exports.emitAudioStart = emitAudioStart;
  */
 const emitAudioComplete = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
-    if (!channel || !channel.audioCompleteCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioCompleteCallbacks))
         return;
     channel.audioCompleteCallbacks.forEach((callback) => {
         try {
@@ -95,7 +95,7 @@ exports.emitAudioComplete = emitAudioComplete;
  */
 const emitAudioPause = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
-    if (!channel || !channel.audioPauseCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioPauseCallbacks))
         return;
     channel.audioPauseCallbacks.forEach((callback) => {
         try {
@@ -120,7 +120,7 @@ exports.emitAudioPause = emitAudioPause;
  */
 const emitAudioResume = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
-    if (!channel || !channel.audioResumeCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioResumeCallbacks))
         return;
     channel.audioResumeCallbacks.forEach((callback) => {
         try {
@@ -200,7 +200,7 @@ exports.setupProgressTracking = setupProgressTracking;
  */
 const cleanupProgressTracking = (audio, channelNumber, audioChannels) => {
     const channel = audioChannels[channelNumber];
-    if (!channel || !channel.progressCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.progressCallbacks))
         return;
     // Remove event listeners
     const updateProgress = progressListeners.get(audio);

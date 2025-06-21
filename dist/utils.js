@@ -56,7 +56,7 @@ const getAudioInfoFromElement = (audio, channelNumber, audioChannels) => {
     const isPlaying = !audio.paused && !audio.ended && audio.readyState > 2;
     // Calculate remainingInQueue if channel context is provided
     let remainingInQueue = 0;
-    if (channelNumber !== undefined && audioChannels && audioChannels[channelNumber]) {
+    if (channelNumber !== undefined && (audioChannels === null || audioChannels === void 0 ? void 0 : audioChannels[channelNumber])) {
         const channel = audioChannels[channelNumber];
         remainingInQueue = Math.max(0, channel.queue.length - 1); // Exclude current playing audio
     }

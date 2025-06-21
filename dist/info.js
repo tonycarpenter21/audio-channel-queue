@@ -130,7 +130,7 @@ exports.onAudioProgress = onAudioProgress;
  */
 const offAudioProgress = (channelNumber) => {
     const channel = exports.audioChannels[channelNumber];
-    if (!channel || !channel.progressCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.progressCallbacks))
         return;
     // Clean up event listeners for current audio if exists
     if (channel.queue.length > 0) {
@@ -185,7 +185,7 @@ exports.onQueueChange = onQueueChange;
  */
 const offQueueChange = (channelNumber) => {
     const channel = exports.audioChannels[channelNumber];
-    if (!channel || !channel.queueChangeCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.queueChangeCallbacks))
         return;
     channel.queueChangeCallbacks.clear();
 };
@@ -338,7 +338,7 @@ exports.onAudioResume = onAudioResume;
  */
 const offAudioPause = (channelNumber) => {
     const channel = exports.audioChannels[channelNumber];
-    if (!channel || !channel.audioPauseCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioPauseCallbacks))
         return;
     channel.audioPauseCallbacks.clear();
 };
@@ -353,7 +353,7 @@ exports.offAudioPause = offAudioPause;
  */
 const offAudioResume = (channelNumber) => {
     const channel = exports.audioChannels[channelNumber];
-    if (!channel || !channel.audioResumeCallbacks)
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioResumeCallbacks))
         return;
     channel.audioResumeCallbacks.clear();
 };
