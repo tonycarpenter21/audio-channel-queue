@@ -143,7 +143,7 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
                 hasStarted = true;
                 (0, events_1.emitAudioStart)(channelNumber, {
                     channelNumber,
-                    duration: currentAudio.duration * 1000, // Now guaranteed to have valid duration
+                    duration: currentAudio.duration * 1000,
                     fileName: (0, utils_1.extractFileName)(currentAudio.src),
                     src: currentAudio.src
                 }, info_1.audioChannels);
@@ -200,7 +200,7 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
         currentAudio.addEventListener('play', handlePlay);
         currentAudio.addEventListener('ended', handleEnded);
         // Check if metadata is already loaded (in case it loads before we add the listener)
-        if (currentAudio.readyState >= 1) { // HAVE_METADATA or higher
+        if (currentAudio.readyState >= 1) {
             metadataLoaded = true;
         }
         // Enhanced play with error handling
@@ -238,6 +238,7 @@ const stopCurrentAudioInChannel = (...args_1) => __awaiter(void 0, [...args_1], 
         channel.isPaused = false; // Reset pause state
         (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);
         // Start next audio without waiting for it to complete
+        // eslint-disable-next-line no-console
         (0, exports.playAudioQueue)(channelNumber).catch(console.error);
     }
 });
@@ -268,7 +269,7 @@ const stopAllAudioInChannel = (...args_1) => __awaiter(void 0, [...args_1], void
             (0, events_1.cleanupProgressTracking)(currentAudio, channelNumber, info_1.audioChannels);
         }
         // Clean up all progress tracking for this channel
-        channel.queue.forEach(audio => (0, events_1.cleanupProgressTracking)(audio, channelNumber, info_1.audioChannels));
+        channel.queue.forEach((audio) => (0, events_1.cleanupProgressTracking)(audio, channelNumber, info_1.audioChannels));
         channel.queue = [];
         channel.isPaused = false; // Reset pause state
         (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);

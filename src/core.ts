@@ -5,12 +5,12 @@
 import { ExtendedAudioQueueChannel, AudioQueueOptions } from './types';
 import { audioChannels } from './info';
 import { extractFileName } from './utils';
-import { 
-  emitQueueChange, 
-  emitAudioStart, 
-  emitAudioComplete, 
-  setupProgressTracking, 
-  cleanupProgressTracking 
+import {
+  emitQueueChange,
+  emitAudioStart,
+  emitAudioComplete,
+  setupProgressTracking,
+  cleanupProgressTracking
 } from './events';
 import { applyVolumeDucking, restoreVolumeLevels } from './volume';
 import { setupAudioErrorHandling, handleAudioError } from './errors';
@@ -30,8 +30,8 @@ import { setupAudioErrorHandling, handleAudioError } from './errors';
  * ```
  */
 export const queueAudio = async (
-  audioUrl: string, 
-  channelNumber: number = 0, 
+  audioUrl: string,
+  channelNumber: number = 0,
   options?: AudioQueueOptions
 ): Promise<void> => {
   // Ensure the channel exists
@@ -114,8 +114,8 @@ export const queueAudio = async (
  * ```
  */
 export const queueAudioPriority = async (
-  audioUrl: string, 
-  channelNumber: number = 0, 
+  audioUrl: string,
+  channelNumber: number = 0,
   options?: AudioQueueOptions
 ): Promise<void> => {
   const priorityOptions: AudioQueueOptions = { ...options, addToFront: true };
@@ -152,17 +152,21 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
     let hasStarted: boolean = false;
     let metadataLoaded: boolean = false;
     let playStarted: boolean = false;
-    
+
     // Check if we should fire onAudioStart (both conditions met)
     const tryFireAudioStart = (): void => {
       if (!hasStarted && metadataLoaded && playStarted) {
         hasStarted = true;
-        emitAudioStart(channelNumber, {
+        emitAudioStart(
           channelNumber,
-          duration: currentAudio.duration * 1000, // Now guaranteed to have valid duration
-          fileName: extractFileName(currentAudio.src),
-          src: currentAudio.src
-        }, audioChannels);
+          {
+            channelNumber,
+            duration: currentAudio.duration * 1000,
+            fileName: extractFileName(currentAudio.src),
+            src: currentAudio.src
+          },
+          audioChannels
+        );
       }
     };
 
@@ -180,12 +184,16 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
 
     // Event handler for when audio ends
     const handleEnded = async (): Promise<void> => {
-      emitAudioComplete(channelNumber, {
+      emitAudioComplete(
         channelNumber,
-        fileName: extractFileName(currentAudio.src),
-        remainingInQueue: channel.queue.length - 1,
-        src: currentAudio.src
-      }, audioChannels);
+        {
+          channelNumber,
+          fileName: extractFileName(currentAudio.src),
+          remainingInQueue: channel.queue.length - 1,
+          src: currentAudio.src
+        },
+        audioChannels
+      );
 
       // Restore volume levels when priority channel stops
       await restoreVolumeLevels(channelNumber);
@@ -194,9 +202,9 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
       currentAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       currentAudio.removeEventListener('play', handlePlay);
       currentAudio.removeEventListener('ended', handleEnded);
-      
+
       cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
-      
+
       // Handle looping vs non-looping audio
       if (currentAudio.loop) {
         // For looping audio, reset current time and continue playing
@@ -210,10 +218,10 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
       } else {
         // For non-looping audio, remove from queue and play next
         channel.queue.shift();
-        
+
         // Emit queue change after completion
         setTimeout(() => emitQueueChange(channelNumber, audioChannels), 10);
-        
+
         await playAudioQueue(channelNumber);
         resolve();
       }
@@ -225,7 +233,7 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
     currentAudio.addEventListener('ended', handleEnded);
 
     // Check if metadata is already loaded (in case it loads before we add the listener)
-    if (currentAudio.readyState >= 1) { // HAVE_METADATA or higher
+    if (currentAudio.readyState >= 1) {
       metadataLoaded = true;
     }
 
@@ -250,13 +258,17 @@ export const stopCurrentAudioInChannel = async (channelNumber: number = 0): Prom
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
   if (channel && channel.queue.length > 0) {
     const currentAudio: HTMLAudioElement = channel.queue[0];
-    
-    emitAudioComplete(channelNumber, {
+
+    emitAudioComplete(
       channelNumber,
-      fileName: extractFileName(currentAudio.src),
-      remainingInQueue: channel.queue.length - 1,
-      src: currentAudio.src
-    }, audioChannels);
+      {
+        channelNumber,
+        fileName: extractFileName(currentAudio.src),
+        remainingInQueue: channel.queue.length - 1,
+        src: currentAudio.src
+      },
+      audioChannels
+    );
 
     // Restore volume levels when stopping
     await restoreVolumeLevels(channelNumber);
@@ -267,8 +279,9 @@ export const stopCurrentAudioInChannel = async (channelNumber: number = 0): Prom
     channel.isPaused = false; // Reset pause state
 
     emitQueueChange(channelNumber, audioChannels);
-    
+
     // Start next audio without waiting for it to complete
+    // eslint-disable-next-line no-console
     playAudioQueue(channelNumber).catch(console.error);
   }
 };
@@ -287,13 +300,17 @@ export const stopAllAudioInChannel = async (channelNumber: number = 0): Promise<
   if (channel) {
     if (channel.queue.length > 0) {
       const currentAudio: HTMLAudioElement = channel.queue[0];
-      
-      emitAudioComplete(channelNumber, {
+
+      emitAudioComplete(
         channelNumber,
-        fileName: extractFileName(currentAudio.src),
-        remainingInQueue: 0, // Will be 0 since we're clearing the queue
-        src: currentAudio.src
-      }, audioChannels);
+        {
+          channelNumber,
+          fileName: extractFileName(currentAudio.src),
+          remainingInQueue: 0, // Will be 0 since we're clearing the queue
+          src: currentAudio.src
+        },
+        audioChannels
+      );
 
       // Restore volume levels when stopping
       await restoreVolumeLevels(channelNumber);
@@ -302,10 +319,10 @@ export const stopAllAudioInChannel = async (channelNumber: number = 0): Promise<
       cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
     }
     // Clean up all progress tracking for this channel
-    channel.queue.forEach(audio => cleanupProgressTracking(audio, channelNumber, audioChannels));
+    channel.queue.forEach((audio) => cleanupProgressTracking(audio, channelNumber, audioChannels));
     channel.queue = [];
     channel.isPaused = false; // Reset pause state
-    
+
     emitQueueChange(channelNumber, audioChannels);
   }
 };
@@ -323,4 +340,4 @@ export const stopAllAudio = async (): Promise<void> => {
     stopPromises.push(stopAllAudioInChannel(index));
   });
   await Promise.all(stopPromises);
-}; 
+};

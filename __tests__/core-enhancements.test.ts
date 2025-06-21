@@ -12,7 +12,7 @@ import {
 import { audioChannels } from '../src/info';
 import { setVolumeDucking, clearVolumeDucking } from '../src/volume';
 import { MockAudioElement, mockCallback, waitForPromises } from './setup';
-import { AudioInfo, AudioStartInfo, VolumeConfig } from '../src/types';
+import { AudioStartInfo, VolumeConfig } from '../src/types';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -24,14 +24,14 @@ describe('Enhanced Core Features', () => {
   describe('queueAudio with options', () => {
     it('should queue audio with loop option', async () => {
       await queueAudio('test.mp3', 0, { loop: true });
-      
+
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(mockAudio.loop).toBe(true);
     });
 
     it('should queue audio with volume option', async () => {
       await queueAudio('test.mp3', 0, { volume: 0.7 });
-      
+
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(mockAudio.volume).toBe(0.7);
       expect(audioChannels[0].volume).toBe(0.7);
@@ -43,7 +43,7 @@ describe('Enhanced Core Features', () => {
         volume: 0.5,
         priority: false
       });
-      
+
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(mockAudio.loop).toBe(true);
       expect(mockAudio.volume).toBe(0.5);
@@ -52,7 +52,7 @@ describe('Enhanced Core Features', () => {
 
     it('should handle default options when none provided', async () => {
       await queueAudio('test.mp3', 0);
-      
+
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(mockAudio.loop).toBe(false);
       expect(mockAudio.volume).toBe(1.0);
@@ -150,14 +150,14 @@ describe('Enhanced Core Features', () => {
   describe('looping functionality', () => {
     it('should loop audio when loop option is true', async () => {
       await queueAudio('loop.mp3', 0, { loop: true });
-      
+
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(mockAudio.loop).toBe(true);
-      
+
       // Simulate audio ending - should not move to next item due to loop
       mockAudio.dispatchEvent(new Event('ended'));
       await waitForPromises();
-      
+
       expect(audioChannels[0].queue.length).toBe(1);
       expect(audioChannels[0].queue[0].src).toBe('loop.mp3');
     });
@@ -165,17 +165,17 @@ describe('Enhanced Core Features', () => {
     it('should not loop audio when loop option is false', async () => {
       await queueAudio('no-loop.mp3', 0, { loop: false });
       await queueAudio('next.mp3', 0);
-      
+
       const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(mockAudio.loop).toBe(false);
-      
+
       // Wait for audio to start playing
       await waitForPromises(50);
-      
+
       // Simulate audio ending - should move to next item
       mockAudio.simulateEnded();
       await waitForPromises(50);
-      
+
       expect(audioChannels[0].queue.length).toBe(1);
       expect(audioChannels[0].queue[0].src).toBe('next.mp3');
     });
@@ -183,11 +183,11 @@ describe('Enhanced Core Features', () => {
     it('should handle looping with priority queue interaction', async () => {
       await queueAudio('background.mp3', 0, { loop: true });
       await queueAudioPriority('urgent.mp3', 0);
-      
+
       // Currently playing background should still be looping
       const backgroundAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       expect(backgroundAudio.loop).toBe(true);
-      
+
       // Next in queue should not be looping (unless specified)
       const urgentAudio = audioChannels[0].queue[1] as unknown as MockAudioElement;
       expect(urgentAudio.loop).toBe(false);
@@ -270,14 +270,16 @@ describe('Enhanced Core Features', () => {
       };
 
       await queueAudio('test.mp3', 0, { loop: true, volume: 0.8 });
-      
+
       // Wait for async audio start event to fire
       await waitForPromises(50);
 
-      expect(startCallback).toHaveBeenCalledWith(expect.objectContaining({
-        fileName: 'test.mp3',
-        channelNumber: 0
-      }));
+      expect(startCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileName: 'test.mp3',
+          channelNumber: 0
+        })
+      );
     });
 
     it('should handle queue changes correctly with priority insertion', async () => {
@@ -321,7 +323,7 @@ describe('Enhanced Core Features', () => {
     });
 
     it('should handle options with some properties undefined', async () => {
-      await queueAudio('test.mp3', 0, { 
+      await queueAudio('test.mp3', 0, {
         loop: true,
         volume: undefined as any
       });
@@ -333,7 +335,7 @@ describe('Enhanced Core Features', () => {
 
     it('should handle priority queuing on empty channel', async () => {
       await expect(queueAudioPriority('test.mp3', 0)).resolves.not.toThrow();
-      
+
       expect(audioChannels[0].queue.length).toBe(1);
       expect(audioChannels[0].queue[0].src).toBe('test.mp3');
     });
@@ -354,23 +356,23 @@ describe('Enhanced Core Features', () => {
 
       // Queue background music with loop
       await queueAudio('background.mp3', 0, { loop: true, volume: 0.7 });
-      
+
       // Queue regular sound effects
       await queueAudio('sfx1.mp3', 1);
       await queueAudio('sfx2.mp3', 1);
-      
+
       // Add priority announcement (should duck background)
       await queueAudioPriority('announcement.mp3', 1, { volume: 1.0 });
 
       expect(audioChannels[0].queue.length).toBe(1); // Background loop
       expect(audioChannels[1].queue.length).toBe(3); // SFX + priority announcement
       expect(audioChannels[1].queue[1].src).toBe('announcement.mp3'); // Priority inserted
-      
+
       const backgroundAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       const announcementAudio = audioChannels[1].queue[1] as unknown as MockAudioElement;
-      
+
       expect(backgroundAudio.loop).toBe(true);
       expect(announcementAudio.volume).toBe(1.0);
     });
   });
-}); 
+});

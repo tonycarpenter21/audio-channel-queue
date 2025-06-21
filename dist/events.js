@@ -4,6 +4,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cleanupProgressTracking = exports.setupProgressTracking = exports.emitAudioResume = exports.emitAudioPause = exports.emitAudioComplete = exports.emitAudioStart = exports.emitQueueChange = void 0;
+const types_1 = require("./types");
 const utils_1 = require("./utils");
 /**
  * Emits a queue change event to all registered listeners for a specific channel
@@ -21,11 +22,12 @@ const emitQueueChange = (channelNumber, audioChannels) => {
     const snapshot = (0, utils_1.createQueueSnapshot)(channelNumber, audioChannels);
     if (!snapshot)
         return;
-    channel.queueChangeCallbacks.forEach(callback => {
+    channel.queueChangeCallbacks.forEach((callback) => {
         try {
             callback(snapshot);
         }
         catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error in queue change callback:', error);
         }
     });
@@ -45,11 +47,12 @@ const emitAudioStart = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
     if (!channel || !channel.audioStartCallbacks)
         return;
-    channel.audioStartCallbacks.forEach(callback => {
+    channel.audioStartCallbacks.forEach((callback) => {
         try {
             callback(audioInfo);
         }
         catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error in audio start callback:', error);
         }
     });
@@ -69,11 +72,12 @@ const emitAudioComplete = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
     if (!channel || !channel.audioCompleteCallbacks)
         return;
-    channel.audioCompleteCallbacks.forEach(callback => {
+    channel.audioCompleteCallbacks.forEach((callback) => {
         try {
             callback(audioInfo);
         }
         catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error in audio complete callback:', error);
         }
     });
@@ -93,11 +97,12 @@ const emitAudioPause = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
     if (!channel || !channel.audioPauseCallbacks)
         return;
-    channel.audioPauseCallbacks.forEach(callback => {
+    channel.audioPauseCallbacks.forEach((callback) => {
         try {
             callback(channelNumber, audioInfo);
         }
         catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error in audio pause callback:', error);
         }
     });
@@ -117,11 +122,12 @@ const emitAudioResume = (channelNumber, audioInfo, audioChannels) => {
     const channel = audioChannels[channelNumber];
     if (!channel || !channel.audioResumeCallbacks)
         return;
-    channel.audioResumeCallbacks.forEach(callback => {
+    channel.audioResumeCallbacks.forEach((callback) => {
         try {
             callback(channelNumber, audioInfo);
         }
         catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error in audio resume callback:', error);
         }
     });
@@ -151,10 +157,10 @@ const setupProgressTracking = (audio, channelNumber, audioChannels) => {
     if (progressListeners.has(audio))
         return;
     const updateProgress = () => {
-        var _a, _b;
+        var _a, _b, _c, _d;
         // Get callbacks for this specific audio element AND the channel-wide callbacks
-        const audioCallbacks = ((_a = channel.progressCallbacks) === null || _a === void 0 ? void 0 : _a.get(audio)) || new Set();
-        const channelCallbacks = ((_b = channel.progressCallbacks) === null || _b === void 0 ? void 0 : _b.get(null)) || new Set();
+        const audioCallbacks = (_b = (_a = channel.progressCallbacks) === null || _a === void 0 ? void 0 : _a.get(audio)) !== null && _b !== void 0 ? _b : new Set();
+        const channelCallbacks = (_d = (_c = channel.progressCallbacks) === null || _c === void 0 ? void 0 : _c.get(types_1.GLOBAL_PROGRESS_KEY)) !== null && _d !== void 0 ? _d : new Set();
         // Combine both sets of callbacks
         const allCallbacks = new Set([...audioCallbacks, ...channelCallbacks]);
         if (allCallbacks.size === 0)
@@ -166,6 +172,7 @@ const setupProgressTracking = (audio, channelNumber, audioChannels) => {
                     callback(info);
                 }
                 catch (error) {
+                    // eslint-disable-next-line no-console
                     console.error('Error in progress callback:', error);
                 }
             });

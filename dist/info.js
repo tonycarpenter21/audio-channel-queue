@@ -4,6 +4,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports.onAudioPause = exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.offAudioProgress = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = void 0;
+const types_1 = require("./types");
 const utils_1 = require("./utils");
 const events_1 = require("./events");
 /**
@@ -113,10 +114,10 @@ const onAudioProgress = (channelNumber, callback) => {
         (0, events_1.setupProgressTracking)(currentAudio, channelNumber, exports.audioChannels);
     }
     // Store callback for future audio elements in this channel
-    if (!channel.progressCallbacks.has(null)) {
-        channel.progressCallbacks.set(null, new Set());
+    if (!channel.progressCallbacks.has(types_1.GLOBAL_PROGRESS_KEY)) {
+        channel.progressCallbacks.set(types_1.GLOBAL_PROGRESS_KEY, new Set());
     }
-    channel.progressCallbacks.get(null).add(callback);
+    channel.progressCallbacks.get(types_1.GLOBAL_PROGRESS_KEY).add(callback);
 };
 exports.onAudioProgress = onAudioProgress;
 /**

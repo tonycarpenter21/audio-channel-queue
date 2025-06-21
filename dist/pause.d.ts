@@ -6,72 +6,84 @@ import { FadeType } from './types';
  * Pauses the currently playing audio in a specific channel with smooth volume fade
  * @param fadeType - Type of fade transition to apply
  * @param channelNumber - The channel number to pause (defaults to 0)
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when the pause and fade are complete
  * @example
  * ```typescript
  * await pauseWithFade(FadeType.Gentle, 0); // Pause with gentle fade out over 800ms
- * await pauseWithFade(FadeType.Dramatic, 1); // Pause with dramatic fade out over 800ms
- * await pauseWithFade(FadeType.Linear, 2); // Linear pause with 800ms fade
+ * await pauseWithFade(FadeType.Dramatic, 1, 1500); // Pause with dramatic fade out over 1.5s
+ * await pauseWithFade(FadeType.Linear, 2, 500); // Linear pause with custom 500ms fade
  * ```
  */
-export declare const pauseWithFade: (fadeType?: FadeType, channelNumber?: number) => Promise<void>;
+export declare const pauseWithFade: (fadeType?: FadeType, channelNumber?: number, duration?: number) => Promise<void>;
 /**
  * Resumes the currently paused audio in a specific channel with smooth volume fade
  * Uses the complementary fade curve automatically based on the pause fade type, or allows override
  * @param fadeType - Optional fade type to override the stored fade type from pause
  * @param channelNumber - The channel number to resume (defaults to 0)
+ * @param duration - Optional custom fade duration in milliseconds (uses stored or fadeType default if not provided)
  * @returns Promise that resolves when the resume and fade are complete
  * @example
  * ```typescript
  * await resumeWithFade(); // Resume with automatically paired fade curve from pause
  * await resumeWithFade(FadeType.Dramatic, 0); // Override with dramatic fade
- * await resumeWithFade(FadeType.Linear); // Override with linear fade on default channel
+ * await resumeWithFade(FadeType.Linear, 0, 1000); // Override with linear fade over 1 second
  * ```
  */
-export declare const resumeWithFade: (fadeType?: FadeType, channelNumber?: number) => Promise<void>;
+export declare const resumeWithFade: (fadeType?: FadeType, channelNumber?: number, duration?: number) => Promise<void>;
 /**
  * Toggles pause/resume state for a specific channel with integrated fade
  * @param fadeType - Type of fade transition to apply when pausing
  * @param channelNumber - The channel number to toggle (defaults to 0)
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when the toggle and fade are complete
  * @example
  * ```typescript
  * await togglePauseWithFade(FadeType.Gentle, 0); // Toggle with gentle fade
+ * await togglePauseWithFade(FadeType.Dramatic, 0, 500); // Toggle with custom 500ms fade
  * ```
  */
-export declare const togglePauseWithFade: (fadeType?: FadeType, channelNumber?: number) => Promise<void>;
+export declare const togglePauseWithFade: (fadeType?: FadeType, channelNumber?: number, duration?: number) => Promise<void>;
 /**
  * Pauses all currently playing audio across all channels with smooth volume fade
  * @param fadeType - Type of fade transition to apply to all channels
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when all channels are paused and faded
  * @example
  * ```typescript
- * await pauseAllWithFade('dramatic'); // Pause everything with dramatic fade
+ * await pauseAllWithFade(FadeType.Dramatic); // Pause everything with dramatic fade
+ * await pauseAllWithFade(FadeType.Gentle, 1200); // Pause all channels with custom 1.2s fade
  * ```
  */
-export declare const pauseAllWithFade: (fadeType?: FadeType) => Promise<void>;
+export declare const pauseAllWithFade: (fadeType?: FadeType, duration?: number) => Promise<void>;
 /**
  * Resumes all currently paused audio across all channels with smooth volume fade
- * Uses automatically paired fade curves based on each channel's pause fade type
+ * Uses automatically paired fade curves based on each channel's pause fade type, or allows override
+ * @param fadeType - Optional fade type to override stored fade types for all channels
+ * @param duration - Optional custom fade duration in milliseconds (uses stored or fadeType default if not provided)
  * @returns Promise that resolves when all channels are resumed and faded
  * @example
  * ```typescript
  * await resumeAllWithFade(); // Resume everything with paired fade curves
+ * await resumeAllWithFade(FadeType.Gentle, 800); // Override all channels with gentle fade over 800ms
+ * await resumeAllWithFade(undefined, 600); // Use stored fade types with custom 600ms duration
  * ```
  */
-export declare const resumeAllWithFade: () => Promise<void>;
+export declare const resumeAllWithFade: (fadeType?: FadeType, duration?: number) => Promise<void>;
 /**
  * Toggles pause/resume state for all channels with integrated fade
  * If any channels are playing, all will be paused with fade
  * If all channels are paused, all will be resumed with fade
  * @param fadeType - Type of fade transition to apply when pausing
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when all toggles and fades are complete
  * @example
  * ```typescript
- * await togglePauseAllWithFade('gentle'); // Global toggle with gentle fade
+ * await togglePauseAllWithFade(FadeType.Gentle); // Global toggle with gentle fade
+ * await togglePauseAllWithFade(FadeType.Dramatic, 600); // Global toggle with custom 600ms fade
  * ```
  */
-export declare const togglePauseAllWithFade: (fadeType?: FadeType) => Promise<void>;
+export declare const togglePauseAllWithFade: (fadeType?: FadeType, duration?: number) => Promise<void>;
 /**
  * Pauses the currently playing audio in a specific channel
  * @param channelNumber - The channel number to pause (defaults to 0)

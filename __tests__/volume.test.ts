@@ -15,7 +15,7 @@ import {
 } from '../src/volume';
 import { audioChannels } from '../src/info';
 import { queueAudio } from '../src/core';
-import { MockAudioElement, waitForPromises, mockCallback, expectVolumeToBeCloseTo } from './setup';
+import { MockAudioElement, waitForPromises, expectVolumeToBeCloseTo } from './setup';
 import { VolumeConfig, EasingType } from '../src/types';
 
 beforeEach(() => {
@@ -70,13 +70,13 @@ describe('Volume Control', () => {
       // Simulate progression through transition
       timeStep = 0; // Start
       await waitForPromises();
-      
+
       timeStep = 50; // Halfway
       await waitForPromises();
-      
+
       timeStep = 100; // Complete
       await waitForPromises();
-      
+
       await transitionPromise;
 
       expect(audioChannels[0].volume).toBe(0.5);
@@ -119,7 +119,7 @@ describe('Volume Control', () => {
 
     it('should get volume for default channel 0 when no channel specified', async () => {
       await setChannelVolume(0, 0.7);
-      
+
       const volume = getChannelVolume(); // No channel parameter
       expect(volume).toBe(0.7);
     });
@@ -345,7 +345,7 @@ describe('Volume Ducking', () => {
       await queueAudio('announcement.mp3', 1);
 
       const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+
       // Set up initial state
       mockAudio0.volume = 0.2; // Currently ducked
       audioChannels[0].volume = 0.8; // Original volume
@@ -406,4 +406,4 @@ describe('Volume Ducking', () => {
       expect(audioChannels[0].volume).toBe(0.5);
     });
   });
-}); 
+});

@@ -19,21 +19,14 @@ const utils_1 = require("./utils");
 const events_1 = require("./events");
 const volume_1 = require("./volume");
 /**
- * Predefined fade configurations for different transition types
- */
-const FADE_CONFIGS = {
-    [types_1.FadeType.Linear]: { duration: 800, pauseCurve: types_1.EasingType.Linear, resumeCurve: types_1.EasingType.Linear },
-    [types_1.FadeType.Gentle]: { duration: 800, pauseCurve: types_1.EasingType.EaseOut, resumeCurve: types_1.EasingType.EaseIn },
-    [types_1.FadeType.Dramatic]: { duration: 800, pauseCurve: types_1.EasingType.EaseIn, resumeCurve: types_1.EasingType.EaseOut }
-};
-/**
  * Gets the current volume for a channel, accounting for synchronous state
  * @param channelNumber - The channel number
  * @returns Current volume level (0-1)
  */
 const getChannelVolumeSync = (channelNumber) => {
+    var _a;
     const channel = info_1.audioChannels[channelNumber];
-    return (channel === null || channel === void 0 ? void 0 : channel.volume) || 1.0;
+    return (_a = channel === null || channel === void 0 ? void 0 : channel.volume) !== null && _a !== void 0 ? _a : 1.0;
 };
 /**
  * Sets the channel volume synchronously in internal state
@@ -53,15 +46,17 @@ const setChannelVolumeSync = (channelNumber, volume) => {
  * Pauses the currently playing audio in a specific channel with smooth volume fade
  * @param fadeType - Type of fade transition to apply
  * @param channelNumber - The channel number to pause (defaults to 0)
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when the pause and fade are complete
  * @example
  * ```typescript
  * await pauseWithFade(FadeType.Gentle, 0); // Pause with gentle fade out over 800ms
- * await pauseWithFade(FadeType.Dramatic, 1); // Pause with dramatic fade out over 800ms
- * await pauseWithFade(FadeType.Linear, 2); // Linear pause with 800ms fade
+ * await pauseWithFade(FadeType.Dramatic, 1, 1500); // Pause with dramatic fade out over 1.5s
+ * await pauseWithFade(FadeType.Linear, 2, 500); // Linear pause with custom 500ms fade
  * ```
  */
-const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, channelNumber = 0) {
+const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, channelNumber = 0, duration) {
+    var _a, _b;
     const channel = info_1.audioChannels[channelNumber];
     if (!channel || channel.queue.length === 0)
         return;
@@ -69,24 +64,47 @@ const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, func
     // Don't pause if already paused or ended
     if (currentAudio.paused || currentAudio.ended)
         return;
-    const config = FADE_CONFIGS[fadeType];
-    const originalVolume = getChannelVolumeSync(channelNumber);
-    // Store fade state for resumeWithFade to use
+    const config = (0, volume_1.getFadeConfig)(fadeType);
+    const effectiveDuration = duration !== undefined ? duration : config.duration;
+    // Race condition fix: Use existing fadeState originalVolume if already transitioning,
+    // otherwise capture current volume
+    let originalVolume;
+    if (channel.fadeState && channel.fadeState.isTransitioning) {
+        // We're already in any kind of transition (pause or resume), preserve original volume
+        originalVolume = channel.fadeState.originalVolume;
+    }
+    else {
+        // First fade or no transition in progress, capture current volume
+        // But ensure we don't capture a volume of 0 during a transition
+        const currentVolume = getChannelVolumeSync(channelNumber);
+        originalVolume = currentVolume > 0 ? currentVolume : (_b = (_a = channel.fadeState) === null || _a === void 0 ? void 0 : _a.originalVolume) !== null && _b !== void 0 ? _b : 1.0;
+    }
+    // Store fade state for resumeWithFade to use (including custom duration)
     channel.fadeState = {
         originalVolume,
         fadeType,
-        isPaused: true
+        isPaused: true,
+        isTransitioning: true,
+        customDuration: duration
     };
-    if (config.duration === 0) {
+    if (effectiveDuration === 0) {
         // Instant pause
         yield (0, exports.pauseChannel)(channelNumber);
+        // Mark transition as complete for instant pause
+        if (channel.fadeState) {
+            channel.fadeState.isTransitioning = false;
+        }
         return;
     }
     // Fade to 0 with pause curve, then pause
-    yield (0, volume_1.transitionVolume)(channelNumber, 0, config.duration, config.pauseCurve);
+    yield (0, volume_1.transitionVolume)(channelNumber, 0, effectiveDuration, config.pauseCurve);
     yield (0, exports.pauseChannel)(channelNumber);
     // Reset volume to original for resume (synchronously to avoid state issues)
     setChannelVolumeSync(channelNumber, originalVolume);
+    // Mark transition as complete
+    if (channel.fadeState) {
+        channel.fadeState.isTransitioning = false;
+    }
 });
 exports.pauseWithFade = pauseWithFade;
 /**
@@ -94,15 +112,16 @@ exports.pauseWithFade = pauseWithFade;
  * Uses the complementary fade curve automatically based on the pause fade type, or allows override
  * @param fadeType - Optional fade type to override the stored fade type from pause
  * @param channelNumber - The channel number to resume (defaults to 0)
+ * @param duration - Optional custom fade duration in milliseconds (uses stored or fadeType default if not provided)
  * @returns Promise that resolves when the resume and fade are complete
  * @example
  * ```typescript
  * await resumeWithFade(); // Resume with automatically paired fade curve from pause
  * await resumeWithFade(FadeType.Dramatic, 0); // Override with dramatic fade
- * await resumeWithFade(FadeType.Linear); // Override with linear fade on default channel
+ * await resumeWithFade(FadeType.Linear, 0, 1000); // Override with linear fade over 1 second
  * ```
  */
-const resumeWithFade = (fadeType_1, ...args_1) => __awaiter(void 0, [fadeType_1, ...args_1], void 0, function* (fadeType, channelNumber = 0) {
+const resumeWithFade = (fadeType_1, ...args_1) => __awaiter(void 0, [fadeType_1, ...args_1], void 0, function* (fadeType, channelNumber = 0, duration) {
     const channel = info_1.audioChannels[channelNumber];
     if (!channel || channel.queue.length === 0)
         return;
@@ -113,74 +132,100 @@ const resumeWithFade = (fadeType_1, ...args_1) => __awaiter(void 0, [fadeType_1,
         return;
     }
     // Use provided fadeType or fall back to stored fadeType from pause
-    const effectiveFadeType = fadeType || fadeState.fadeType;
-    const config = FADE_CONFIGS[effectiveFadeType];
-    if (config.duration === 0) {
+    const effectiveFadeType = fadeType !== null && fadeType !== void 0 ? fadeType : fadeState.fadeType;
+    const config = (0, volume_1.getFadeConfig)(effectiveFadeType);
+    // Determine effective duration: custom parameter > stored custom > fadeType default
+    let effectiveDuration;
+    if (duration !== undefined) {
+        effectiveDuration = duration;
+    }
+    else if (fadeState.customDuration !== undefined) {
+        effectiveDuration = fadeState.customDuration;
+    }
+    else {
+        effectiveDuration = config.duration;
+    }
+    if (effectiveDuration === 0) {
         // Instant resume
         yield (0, exports.resumeChannel)(channelNumber);
         fadeState.isPaused = false;
+        fadeState.isTransitioning = false;
         return;
     }
+    // Race condition fix: Ensure we have a valid original volume to restore to
+    const targetVolume = fadeState.originalVolume > 0 ? fadeState.originalVolume : 1.0;
+    // Mark as transitioning to prevent volume capture during rapid toggles
+    fadeState.isTransitioning = true;
     // Set volume to 0, resume, then fade to original with resume curve
     setChannelVolumeSync(channelNumber, 0);
     yield (0, exports.resumeChannel)(channelNumber);
-    yield (0, volume_1.transitionVolume)(channelNumber, fadeState.originalVolume, config.duration, config.resumeCurve);
+    // Use the stored original volume, not current volume, to prevent race conditions
+    yield (0, volume_1.transitionVolume)(channelNumber, targetVolume, effectiveDuration, config.resumeCurve);
     fadeState.isPaused = false;
+    fadeState.isTransitioning = false;
 });
 exports.resumeWithFade = resumeWithFade;
 /**
  * Toggles pause/resume state for a specific channel with integrated fade
  * @param fadeType - Type of fade transition to apply when pausing
  * @param channelNumber - The channel number to toggle (defaults to 0)
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when the toggle and fade are complete
  * @example
  * ```typescript
  * await togglePauseWithFade(FadeType.Gentle, 0); // Toggle with gentle fade
+ * await togglePauseWithFade(FadeType.Dramatic, 0, 500); // Toggle with custom 500ms fade
  * ```
  */
-const togglePauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, channelNumber = 0) {
+const togglePauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, channelNumber = 0, duration) {
     const channel = info_1.audioChannels[channelNumber];
     if (!channel || channel.queue.length === 0)
         return;
     const currentAudio = channel.queue[0];
     if (currentAudio.paused) {
-        yield (0, exports.resumeWithFade)(undefined, channelNumber);
+        yield (0, exports.resumeWithFade)(undefined, channelNumber, duration);
     }
     else {
-        yield (0, exports.pauseWithFade)(fadeType, channelNumber);
+        yield (0, exports.pauseWithFade)(fadeType, channelNumber, duration);
     }
 });
 exports.togglePauseWithFade = togglePauseWithFade;
 /**
  * Pauses all currently playing audio across all channels with smooth volume fade
  * @param fadeType - Type of fade transition to apply to all channels
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when all channels are paused and faded
  * @example
  * ```typescript
- * await pauseAllWithFade('dramatic'); // Pause everything with dramatic fade
+ * await pauseAllWithFade(FadeType.Dramatic); // Pause everything with dramatic fade
+ * await pauseAllWithFade(FadeType.Gentle, 1200); // Pause all channels with custom 1.2s fade
  * ```
  */
-const pauseAllWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle) {
+const pauseAllWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, duration) {
     const pausePromises = [];
     info_1.audioChannels.forEach((_channel, index) => {
-        pausePromises.push((0, exports.pauseWithFade)(fadeType, index));
+        pausePromises.push((0, exports.pauseWithFade)(fadeType, index, duration));
     });
     yield Promise.all(pausePromises);
 });
 exports.pauseAllWithFade = pauseAllWithFade;
 /**
  * Resumes all currently paused audio across all channels with smooth volume fade
- * Uses automatically paired fade curves based on each channel's pause fade type
+ * Uses automatically paired fade curves based on each channel's pause fade type, or allows override
+ * @param fadeType - Optional fade type to override stored fade types for all channels
+ * @param duration - Optional custom fade duration in milliseconds (uses stored or fadeType default if not provided)
  * @returns Promise that resolves when all channels are resumed and faded
  * @example
  * ```typescript
  * await resumeAllWithFade(); // Resume everything with paired fade curves
+ * await resumeAllWithFade(FadeType.Gentle, 800); // Override all channels with gentle fade over 800ms
+ * await resumeAllWithFade(undefined, 600); // Use stored fade types with custom 600ms duration
  * ```
  */
-const resumeAllWithFade = () => __awaiter(void 0, void 0, void 0, function* () {
+const resumeAllWithFade = (fadeType, duration) => __awaiter(void 0, void 0, void 0, function* () {
     const resumePromises = [];
     info_1.audioChannels.forEach((_channel, index) => {
-        resumePromises.push((0, exports.resumeWithFade)(undefined, index));
+        resumePromises.push((0, exports.resumeWithFade)(fadeType, index, duration));
     });
     yield Promise.all(resumePromises);
 });
@@ -190,13 +235,15 @@ exports.resumeAllWithFade = resumeAllWithFade;
  * If any channels are playing, all will be paused with fade
  * If all channels are paused, all will be resumed with fade
  * @param fadeType - Type of fade transition to apply when pausing
+ * @param duration - Optional custom fade duration in milliseconds (uses fadeType default if not provided)
  * @returns Promise that resolves when all toggles and fades are complete
  * @example
  * ```typescript
- * await togglePauseAllWithFade('gentle'); // Global toggle with gentle fade
+ * await togglePauseAllWithFade(FadeType.Gentle); // Global toggle with gentle fade
+ * await togglePauseAllWithFade(FadeType.Dramatic, 600); // Global toggle with custom 600ms fade
  * ```
  */
-const togglePauseAllWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle) {
+const togglePauseAllWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, duration) {
     let hasPlayingChannel = false;
     // Check if any channel is currently playing
     for (let i = 0; i < info_1.audioChannels.length; i++) {
@@ -212,10 +259,10 @@ const togglePauseAllWithFade = (...args_1) => __awaiter(void 0, [...args_1], voi
     // If any channel is playing, pause all with fade
     // If no channels are playing, resume all with fade
     if (hasPlayingChannel) {
-        yield (0, exports.pauseAllWithFade)(fadeType);
+        yield (0, exports.pauseAllWithFade)(fadeType, duration);
     }
     else {
-        yield (0, exports.resumeAllWithFade)();
+        yield (0, exports.resumeAllWithFade)(fadeType, duration);
     }
 });
 exports.togglePauseAllWithFade = togglePauseAllWithFade;
@@ -335,8 +382,9 @@ exports.resumeAllChannels = resumeAllChannels;
  * ```
  */
 const isChannelPaused = (channelNumber = 0) => {
+    var _a;
     const channel = info_1.audioChannels[channelNumber];
-    return (channel === null || channel === void 0 ? void 0 : channel.isPaused) || false;
+    return (_a = channel === null || channel === void 0 ? void 0 : channel.isPaused) !== null && _a !== void 0 ? _a : false;
 };
 exports.isChannelPaused = isChannelPaused;
 /**
@@ -351,7 +399,7 @@ exports.isChannelPaused = isChannelPaused;
  * ```
  */
 const getAllChannelsPauseState = () => {
-    return info_1.audioChannels.map((channel) => (channel === null || channel === void 0 ? void 0 : channel.isPaused) || false);
+    return info_1.audioChannels.map((channel) => { var _a; return (_a = channel === null || channel === void 0 ? void 0 : channel.isPaused) !== null && _a !== void 0 ? _a : false; });
 };
 exports.getAllChannelsPauseState = getAllChannelsPauseState;
 /**

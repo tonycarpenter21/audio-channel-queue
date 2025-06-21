@@ -2,13 +2,14 @@
  * @fileoverview Event handling and emission for the audio-channel-queue package
  */
 
-import { 
-  AudioStartInfo, 
-  AudioCompleteInfo, 
+import {
+  AudioStartInfo,
+  AudioCompleteInfo,
   ExtendedAudioQueueChannel,
   QueueSnapshot,
   ProgressCallback,
   AudioInfo,
+  GLOBAL_PROGRESS_KEY
 } from './types';
 import { createQueueSnapshot, getAudioInfoFromElement } from './utils';
 
@@ -22,19 +23,20 @@ import { createQueueSnapshot, getAudioInfoFromElement } from './utils';
  * ```
  */
 export const emitQueueChange = (
-  channelNumber: number, 
+  channelNumber: number,
   audioChannels: ExtendedAudioQueueChannel[]
 ): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.queueChangeCallbacks) return;
+  if (!channel?.queueChangeCallbacks) return;
 
   const snapshot: QueueSnapshot | null = createQueueSnapshot(channelNumber, audioChannels);
   if (!snapshot) return;
 
-  channel.queueChangeCallbacks.forEach(callback => {
+  channel.queueChangeCallbacks.forEach((callback) => {
     try {
       callback(snapshot);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error in queue change callback:', error);
     }
   });
@@ -51,17 +53,18 @@ export const emitQueueChange = (
  * ```
  */
 export const emitAudioStart = (
-  channelNumber: number, 
+  channelNumber: number,
   audioInfo: AudioStartInfo,
   audioChannels: ExtendedAudioQueueChannel[]
 ): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.audioStartCallbacks) return;
+  if (!channel?.audioStartCallbacks) return;
 
-  channel.audioStartCallbacks.forEach(callback => {
+  channel.audioStartCallbacks.forEach((callback) => {
     try {
       callback(audioInfo);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error in audio start callback:', error);
     }
   });
@@ -78,17 +81,18 @@ export const emitAudioStart = (
  * ```
  */
 export const emitAudioComplete = (
-  channelNumber: number, 
+  channelNumber: number,
   audioInfo: AudioCompleteInfo,
   audioChannels: ExtendedAudioQueueChannel[]
 ): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.audioCompleteCallbacks) return;
+  if (!channel?.audioCompleteCallbacks) return;
 
-  channel.audioCompleteCallbacks.forEach(callback => {
+  channel.audioCompleteCallbacks.forEach((callback) => {
     try {
       callback(audioInfo);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error in audio complete callback:', error);
     }
   });
@@ -105,17 +109,18 @@ export const emitAudioComplete = (
  * ```
  */
 export const emitAudioPause = (
-  channelNumber: number, 
+  channelNumber: number,
   audioInfo: AudioInfo,
   audioChannels: ExtendedAudioQueueChannel[]
 ): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.audioPauseCallbacks) return;
+  if (!channel?.audioPauseCallbacks) return;
 
-  channel.audioPauseCallbacks.forEach(callback => {
+  channel.audioPauseCallbacks.forEach((callback) => {
     try {
       callback(channelNumber, audioInfo);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error in audio pause callback:', error);
     }
   });
@@ -132,24 +137,25 @@ export const emitAudioPause = (
  * ```
  */
 export const emitAudioResume = (
-  channelNumber: number, 
+  channelNumber: number,
   audioInfo: AudioInfo,
   audioChannels: ExtendedAudioQueueChannel[]
 ): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.audioResumeCallbacks) return;
+  if (!channel?.audioResumeCallbacks) return;
 
-  channel.audioResumeCallbacks.forEach(callback => {
+  channel.audioResumeCallbacks.forEach((callback) => {
     try {
       callback(channelNumber, audioInfo);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error in audio resume callback:', error);
     }
   });
 };
 
 // Store listener functions for cleanup
-const progressListeners = new WeakMap<HTMLAudioElement, () => void>();
+const progressListeners: WeakMap<HTMLAudioElement, () => void> = new WeakMap();
 
 /**
  * Sets up comprehensive progress tracking for an audio element
@@ -163,7 +169,7 @@ const progressListeners = new WeakMap<HTMLAudioElement, () => void>();
  * ```
  */
 export const setupProgressTracking = (
-  audio: HTMLAudioElement, 
+  audio: HTMLAudioElement,
   channelNumber: number,
   audioChannels: ExtendedAudioQueueChannel[]
 ): void => {
@@ -179,12 +185,14 @@ export const setupProgressTracking = (
 
   const updateProgress = (): void => {
     // Get callbacks for this specific audio element AND the channel-wide callbacks
-    const audioCallbacks: Set<ProgressCallback> = channel.progressCallbacks?.get(audio) || new Set();
-    const channelCallbacks: Set<ProgressCallback> = channel.progressCallbacks?.get(null as any) || new Set();
-    
+    const audioCallbacks: Set<ProgressCallback> =
+      channel.progressCallbacks?.get(audio) ?? new Set();
+    const channelCallbacks: Set<ProgressCallback> =
+      channel.progressCallbacks?.get(GLOBAL_PROGRESS_KEY) ?? new Set();
+
     // Combine both sets of callbacks
     const allCallbacks: Set<ProgressCallback> = new Set([...audioCallbacks, ...channelCallbacks]);
-    
+
     if (allCallbacks.size === 0) return;
 
     const info: AudioInfo | null = getAudioInfoFromElement(audio, channelNumber, audioChannels);
@@ -193,6 +201,7 @@ export const setupProgressTracking = (
         try {
           callback(info);
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error('Error in progress callback:', error);
         }
       });
@@ -221,12 +230,12 @@ export const setupProgressTracking = (
  * ```
  */
 export const cleanupProgressTracking = (
-  audio: HTMLAudioElement, 
+  audio: HTMLAudioElement,
   channelNumber: number,
   audioChannels: ExtendedAudioQueueChannel[]
 ): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.progressCallbacks) return;
+  if (!channel?.progressCallbacks) return;
 
   // Remove event listeners
   const updateProgress: (() => void) | undefined = progressListeners.get(audio);
@@ -240,4 +249,4 @@ export const cleanupProgressTracking = (
   }
 
   channel.progressCallbacks.delete(audio);
-}; 
+};

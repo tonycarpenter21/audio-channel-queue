@@ -6,7 +6,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.audioChannels = exports.onQueueChange = exports.onAudioStart = exports.onAudioResume = exports.onAudioProgress = exports.onAudioPause = exports.onAudioComplete = exports.offQueueChange = exports.offAudioResume = exports.offAudioProgress = exports.offAudioPause = exports.getQueueSnapshot = exports.getCurrentAudioInfo = exports.getAllChannelsInfo = exports.transitionVolume = exports.setVolumeDucking = exports.setChannelVolume = exports.setAllChannelsVolume = exports.getFadeConfig = exports.getChannelVolume = exports.getAllChannelsVolume = exports.fadeVolume = exports.clearVolumeDucking = exports.togglePauseWithFade = exports.togglePauseChannel = exports.togglePauseAllWithFade = exports.togglePauseAllChannels = exports.resumeWithFade = exports.resumeChannel = exports.resumeAllWithFade = exports.resumeAllChannels = exports.pauseWithFade = exports.pauseChannel = exports.pauseAllWithFade = exports.pauseAllChannels = exports.isChannelPaused = exports.getAllChannelsPauseState = exports.setRetryConfig = exports.setErrorRecovery = exports.retryFailedAudio = exports.onAudioError = exports.offAudioError = exports.getRetryConfig = exports.getErrorRecovery = exports.playAudioQueue = exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.queueAudioPriority = exports.queueAudio = void 0;
-exports.FadeType = exports.EasingType = exports.getAudioInfoFromElement = exports.extractFileName = exports.createQueueSnapshot = exports.cleanWebpackFilename = void 0;
+exports.GLOBAL_PROGRESS_KEY = exports.FadeType = exports.EasingType = exports.getAudioInfoFromElement = exports.extractFileName = exports.createQueueSnapshot = exports.cleanWebpackFilename = void 0;
 // Core queue management functions
 var core_1 = require("./core");
 Object.defineProperty(exports, "queueAudio", { enumerable: true, get: function () { return core_1.queueAudio; } });
@@ -75,7 +75,8 @@ Object.defineProperty(exports, "cleanWebpackFilename", { enumerable: true, get: 
 Object.defineProperty(exports, "createQueueSnapshot", { enumerable: true, get: function () { return utils_1.createQueueSnapshot; } });
 Object.defineProperty(exports, "extractFileName", { enumerable: true, get: function () { return utils_1.extractFileName; } });
 Object.defineProperty(exports, "getAudioInfoFromElement", { enumerable: true, get: function () { return utils_1.getAudioInfoFromElement; } });
-// Enums
+// Enums and constants
 var types_1 = require("./types");
 Object.defineProperty(exports, "EasingType", { enumerable: true, get: function () { return types_1.EasingType; } });
 Object.defineProperty(exports, "FadeType", { enumerable: true, get: function () { return types_1.FadeType; } });
+Object.defineProperty(exports, "GLOBAL_PROGRESS_KEY", { enumerable: true, get: function () { return types_1.GLOBAL_PROGRESS_KEY; } });

@@ -2,16 +2,17 @@
  * @fileoverview Audio information and progress tracking functions for the audio-channel-queue package
  */
 
-import { 
-  AudioInfo, 
-  QueueSnapshot, 
+import {
+  AudioInfo,
+  QueueSnapshot,
   ProgressCallback,
   QueueChangeCallback,
   AudioStartCallback,
   AudioCompleteCallback,
   AudioPauseCallback,
   AudioResumeCallback,
-  ExtendedAudioQueueChannel
+  ExtendedAudioQueueChannel,
+  GLOBAL_PROGRESS_KEY
 } from './types';
 import { getAudioInfoFromElement, createQueueSnapshot } from './utils';
 import { setupProgressTracking, cleanupProgressTracking } from './events';
@@ -60,11 +61,11 @@ export const getCurrentAudioInfo = (channelNumber: number = 0): AudioInfo | null
  */
 export const getAllChannelsInfo = (): (AudioInfo | null)[] => {
   const allChannelsInfo: (AudioInfo | null)[] = [];
-  
-  for (let i = 0; i < audioChannels.length; i++) {
+
+  for (let i: number = 0; i < audioChannels.length; i++) {
     allChannelsInfo.push(getCurrentAudioInfo(i));
   }
-  
+
   return allChannelsInfo;
 };
 
@@ -99,7 +100,7 @@ export const getQueueSnapshot = (channelNumber: number): QueueSnapshot | null =>
  */
 export const onAudioProgress = (channelNumber: number, callback: ProgressCallback): void => {
   if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+    audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
       audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
@@ -125,16 +126,16 @@ export const onAudioProgress = (channelNumber: number, callback: ProgressCallbac
       channel.progressCallbacks.set(currentAudio, new Set());
     }
     channel.progressCallbacks.get(currentAudio)!.add(callback);
-    
+
     // Set up tracking if not already done
     setupProgressTracking(currentAudio, channelNumber, audioChannels);
   }
 
   // Store callback for future audio elements in this channel
-  if (!channel.progressCallbacks.has(null as any)) {
-    channel.progressCallbacks.set(null as any, new Set());
+  if (!channel.progressCallbacks.has(GLOBAL_PROGRESS_KEY)) {
+    channel.progressCallbacks.set(GLOBAL_PROGRESS_KEY, new Set());
   }
-  channel.progressCallbacks.get(null as any)!.add(callback);
+  channel.progressCallbacks.get(GLOBAL_PROGRESS_KEY)!.add(callback);
 };
 
 /**
@@ -147,7 +148,7 @@ export const onAudioProgress = (channelNumber: number, callback: ProgressCallbac
  */
 export const offAudioProgress = (channelNumber: number): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.progressCallbacks) return;
+  if (!channel?.progressCallbacks) return;
 
   // Clean up event listeners for current audio if exists
   if (channel.queue.length > 0) {
@@ -173,7 +174,7 @@ export const offAudioProgress = (channelNumber: number): void => {
  */
 export const onQueueChange = (channelNumber: number, callback: QueueChangeCallback): void => {
   if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+    audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
       audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
@@ -205,7 +206,7 @@ export const onQueueChange = (channelNumber: number, callback: QueueChangeCallba
  */
 export const offQueueChange = (channelNumber: number): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.queueChangeCallbacks) return;
+  if (!channel?.queueChangeCallbacks) return;
 
   channel.queueChangeCallbacks.clear();
 };
@@ -224,7 +225,7 @@ export const offQueueChange = (channelNumber: number): void => {
  */
 export const onAudioStart = (channelNumber: number, callback: AudioStartCallback): void => {
   if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+    audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
       audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
@@ -262,7 +263,7 @@ export const onAudioStart = (channelNumber: number, callback: AudioStartCallback
  */
 export const onAudioComplete = (channelNumber: number, callback: AudioCompleteCallback): void => {
   if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+    audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
       audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
@@ -298,7 +299,7 @@ export const onAudioComplete = (channelNumber: number, callback: AudioCompleteCa
  */
 export const onAudioPause = (channelNumber: number, callback: AudioPauseCallback): void => {
   if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+    audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
       audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
@@ -334,7 +335,7 @@ export const onAudioPause = (channelNumber: number, callback: AudioPauseCallback
  */
 export const onAudioResume = (channelNumber: number, callback: AudioResumeCallback): void => {
   if (!audioChannels[channelNumber]) {
-    audioChannels[channelNumber] = { 
+    audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
       audioErrorCallbacks: new Set(),
       audioPauseCallbacks: new Set(),
@@ -366,7 +367,7 @@ export const onAudioResume = (channelNumber: number, callback: AudioResumeCallba
  */
 export const offAudioPause = (channelNumber: number): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.audioPauseCallbacks) return;
+  if (!channel?.audioPauseCallbacks) return;
 
   channel.audioPauseCallbacks.clear();
 };
@@ -381,7 +382,7 @@ export const offAudioPause = (channelNumber: number): void => {
  */
 export const offAudioResume = (channelNumber: number): void => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (!channel || !channel.audioResumeCallbacks) return;
+  if (!channel?.audioResumeCallbacks) return;
 
   channel.audioResumeCallbacks.clear();
-}; 
+};

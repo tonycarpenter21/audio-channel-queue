@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2025-01-16
+
+### Changed - TypeScript Code Quality & Standards Implementation 🎯
+  - Configuration defaults preserve `0` durations and empty configs
+  - Retry attempts and Map.get() operations now handle falsy values correctly
+
+- **🧹 Linting & Code Standards**: Achieved zero linting errors and warnings across entire codebase
+  - **Enhanced type declarations**: All variables now have explicit types 
+
+### Technical Improvements
+- **Implemented Prettier & ESLint**: Implemented formatting packages to improve code style consistency in the repo.
+- **Enhanced type mapping**: Progress callbacks now use proper symbol-based keys for type safety
+- **Better mock typing**: Test setup uses proper function types instead of generic Function type
+- **Explicit variable typing**: All Map, WeakMap, and loop variables have explicit type annotations
+- **Symbol-based constants**: Replaced type assertions with proper symbol constants for global operations
+
+### Fixed
+- **Type assertion safety**: Eliminated all `null as any` type assertions that could cause runtime errors
+- **Progress callback typing**: Fixed type safety issues in global progress callback management
+- **Test compilation**: Resolved TypeScript compilation errors in test files
+
 ## [1.8.0] - 2025-01-16
 
 ### Added - Enhanced Fade System & Type Safety Improvements 🎵

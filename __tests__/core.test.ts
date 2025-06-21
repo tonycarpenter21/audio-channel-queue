@@ -2,9 +2,9 @@
  * @fileoverview Tests for core queue management functions
  */
 
-import { 
-  queueAudio, 
-  playAudioQueue, 
+import {
+  queueAudio,
+  playAudioQueue,
   stopCurrentAudioInChannel,
   stopAllAudioInChannel,
   stopAllAudio
@@ -21,9 +21,9 @@ beforeEach(() => {
 
 describe('Core Queue Management', () => {
   describe('queueAudio', () => {
-    it('should create a new audio channel if it doesn\'t exist', async () => {
+    it("should create a new audio channel if it doesn't exist", async () => {
       await queueAudio('test.mp3');
-      
+
       expect(audioChannels[0]).toBeDefined();
       expect(audioChannels[0].queue.length).toBe(1);
     });
@@ -31,20 +31,20 @@ describe('Core Queue Management', () => {
     it('should add audio to an existing channel', async () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
-      
+
       expect(audioChannels[0].queue.length).toBe(2);
     });
 
     it('should use the specified channel number', async () => {
       await queueAudio('test.mp3', 1);
-      
+
       expect(audioChannels[1]).toBeDefined();
       expect(audioChannels[1].queue.length).toBe(1);
     });
 
-    it('should start playing if it\'s the first audio in the queue', async () => {
+    it("should start playing if it's the first audio in the queue", async () => {
       await queueAudio('test.mp3');
-      
+
       // Wait for async playback to start
       await waitForPromises(50);
 
@@ -52,17 +52,17 @@ describe('Core Queue Management', () => {
       expect(audioElement.play).toHaveBeenCalled();
     });
 
-    it('should not start playing if it\'s not the first audio in the queue', async () => {
+    it("should not start playing if it's not the first audio in the queue", async () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
-      
+
       const secondAudio = audioChannels[0].queue[1] as unknown as MockAudioElement;
       expect(secondAudio.play).not.toHaveBeenCalled();
     });
 
     it('should initialize all callback sets for new channels', async () => {
       await queueAudio('test.mp3');
-      
+
       const channel = audioChannels[0];
       expect(channel.audioCompleteCallbacks).toBeDefined();
       expect(channel.audioStartCallbacks).toBeDefined();
@@ -74,7 +74,7 @@ describe('Core Queue Management', () => {
   describe('playAudioQueue', () => {
     it('should play the current audio in the queue', async () => {
       await queueAudio('test.mp3');
-      
+
       // Wait for async playback to start
       await waitForPromises(50);
 
@@ -90,7 +90,7 @@ describe('Core Queue Management', () => {
     it('should automatically play next audio when current ends', async () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
-      
+
       // Wait for first audio to start
       await waitForPromises(50);
 
@@ -99,7 +99,7 @@ describe('Core Queue Management', () => {
 
       // Simulate first audio ending
       firstAudio.simulateEnded();
-      
+
       // Wait for second audio to start
       await waitForPromises(50);
 
@@ -112,12 +112,12 @@ describe('Core Queue Management', () => {
     it('should pause the current audio and remove it from the queue', async () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
-      
+
       const firstAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
       const secondAudio = audioChannels[0].queue[1] as unknown as MockAudioElement;
-      
+
       await stopCurrentAudioInChannel(0);
-      
+
       expect(firstAudio.pause).toHaveBeenCalled();
       expect(audioChannels[0].queue).toHaveLength(1);
       expect(audioChannels[0].queue[0]).toBe(secondAudio);
@@ -130,7 +130,7 @@ describe('Core Queue Management', () => {
       const secondAudio = audioChannels[0].queue[1] as unknown as MockAudioElement;
 
       await stopCurrentAudioInChannel(0);
-      
+
       // Wait for async playback to start
       await waitForPromises(50);
 
@@ -143,11 +143,11 @@ describe('Core Queue Management', () => {
 
     it('should work with default channel parameter', async () => {
       await queueAudio('test.mp3');
-      
+
       const audio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+
       await stopCurrentAudioInChannel(); // No channel specified, should default to 0
-      
+
       expect(audio.pause).toHaveBeenCalled();
       expect(audioChannels[0].queue).toHaveLength(0);
     });
@@ -157,11 +157,11 @@ describe('Core Queue Management', () => {
     it('should pause the current audio and clear the entire queue', async () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
-      
+
       const firstAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+
       await stopAllAudioInChannel(0);
-      
+
       expect(firstAudio.pause).toHaveBeenCalled();
       expect(audioChannels[0].queue).toHaveLength(0);
     });
@@ -172,11 +172,11 @@ describe('Core Queue Management', () => {
 
     it('should work with default channel parameter', async () => {
       await queueAudio('test.mp3');
-      
+
       const audio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+
       await stopAllAudioInChannel(); // No channel specified, should default to 0
-      
+
       expect(audio.pause).toHaveBeenCalled();
       expect(audioChannels[0].queue).toHaveLength(0);
     });
@@ -187,13 +187,13 @@ describe('Core Queue Management', () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
       await queueAudio('test3.mp3', 2);
-      
+
       const audio1 = audioChannels[0].queue[0] as unknown as MockAudioElement;
       const audio2 = audioChannels[1].queue[0] as unknown as MockAudioElement;
       const audio3 = audioChannels[2].queue[0] as unknown as MockAudioElement;
-      
+
       await stopAllAudio();
-      
+
       expect(audio1.pause).toHaveBeenCalled();
       expect(audio2.pause).toHaveBeenCalled();
       expect(audio3.pause).toHaveBeenCalled();
@@ -206,9 +206,9 @@ describe('Core Queue Management', () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 0);
       await queueAudio('test3.mp3', 1);
-      
+
       await stopAllAudio();
-      
+
       expect(audioChannels[0].queue).toHaveLength(0);
       expect(audioChannels[1].queue).toHaveLength(0);
     });
@@ -217,4 +217,4 @@ describe('Core Queue Management', () => {
       await expect(stopAllAudio()).resolves.not.toThrow();
     });
   });
-}); 
+});

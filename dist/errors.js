@@ -191,11 +191,12 @@ exports.getErrorRecovery = getErrorRecovery;
  * ```
  */
 const retryFailedAudio = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (channelNumber = 0) {
+    var _a;
     const channel = info_1.audioChannels[channelNumber];
     if (!channel || channel.queue.length === 0)
         return false;
     const currentAudio = channel.queue[0];
-    const currentAttempts = retryAttempts.get(currentAudio) || 0;
+    const currentAttempts = (_a = retryAttempts.get(currentAudio)) !== null && _a !== void 0 ? _a : 0;
     if (currentAttempts >= globalRetryConfig.maxRetries) {
         return false;
     }
@@ -208,6 +209,8 @@ const retryFailedAudio = (...args_1) => __awaiter(void 0, [...args_1], void 0, f
         return true;
     }
     catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(`Error in retryFailedAudio: ${error}`);
         // Increment retry counter
         retryAttempts.set(currentAudio, currentAttempts + 1);
         return false;
@@ -227,13 +230,15 @@ const emitAudioError = (channelNumber, errorInfo, audioChannels) => {
         return;
     // Log to analytics if enabled
     if (globalErrorRecovery.logErrorsToAnalytics) {
+        // eslint-disable-next-line no-console
         console.warn('Audio Error Analytics:', errorInfo);
     }
-    channel.audioErrorCallbacks.forEach(callback => {
+    channel.audioErrorCallbacks.forEach((callback) => {
         try {
             callback(errorInfo);
         }
         catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error in audio error callback:', error);
         }
     });
@@ -252,7 +257,8 @@ const categorizeError = (error, audio) => {
         return 'network';
     }
     // Check for unsupported format first (more specific than decode)
-    if (errorMessage.includes('not supported') || errorMessage.includes('unsupported') ||
+    if (errorMessage.includes('not supported') ||
+        errorMessage.includes('unsupported') ||
         errorMessage.includes('format not supported')) {
         return 'unsupported';
     }
@@ -312,7 +318,7 @@ const setupAudioErrorHandling = (audio, channelNumber, originalUrl, onError) => 
         }
     };
     // Handle various error events
-    const handleError = (event) => {
+    const handleError = (_event) => {
         var _a;
         if (typeof setTimeout !== 'undefined') {
             const timeoutId = loadTimeouts.get(audio);
@@ -363,11 +369,12 @@ exports.setupAudioErrorHandling = setupAudioErrorHandling;
  * @internal
  */
 const handleAudioError = (audio, channelNumber, originalUrl, error) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     const channel = info_1.audioChannels[channelNumber];
     if (!channel)
         return;
-    const currentAttempts = retryAttempts.get(audio) || 0;
-    const retryConfig = channel.retryConfig || globalRetryConfig;
+    const currentAttempts = (_a = retryAttempts.get(audio)) !== null && _a !== void 0 ? _a : 0;
+    const retryConfig = (_b = channel.retryConfig) !== null && _b !== void 0 ? _b : globalRetryConfig;
     const errorInfo = {
         channelNumber,
         src: originalUrl,
@@ -381,7 +388,9 @@ const handleAudioError = (audio, channelNumber, originalUrl, error) => __awaiter
     // Emit error event
     (0, exports.emitAudioError)(channelNumber, errorInfo, info_1.audioChannels);
     // Attempt retry if enabled and within limits
-    if (retryConfig.enabled && currentAttempts < retryConfig.maxRetries && globalErrorRecovery.autoRetry) {
+    if (retryConfig.enabled &&
+        currentAttempts < retryConfig.maxRetries &&
+        globalErrorRecovery.autoRetry) {
         const delay = retryConfig.exponentialBackoff
             ? retryConfig.baseDelay * Math.pow(2, currentAttempts)
             : retryConfig.baseDelay;
@@ -412,6 +421,7 @@ const handleAudioError = (audio, channelNumber, originalUrl, error) => __awaiter
             channel.queue.shift();
             // Import and use playAudioQueue to continue with next track
             const { playAudioQueue } = yield Promise.resolve().then(() => __importStar(require('./core')));
+            // eslint-disable-next-line no-console
             playAudioQueue(channelNumber).catch(console.error);
         }
         else if (!globalErrorRecovery.preserveQueueOnError) {

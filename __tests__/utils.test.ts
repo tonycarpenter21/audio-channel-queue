@@ -2,7 +2,12 @@
  * @fileoverview Tests for utility functions
  */
 
-import { extractFileName, getAudioInfoFromElement, createQueueSnapshot, cleanWebpackFilename } from '../src/utils';
+import {
+  extractFileName,
+  getAudioInfoFromElement,
+  createQueueSnapshot,
+  cleanWebpackFilename
+} from '../src/utils';
 import { MockAudioElement } from './setup';
 import { AudioInfo, ExtendedAudioQueueChannel } from '../src/types';
 
@@ -24,7 +29,9 @@ describe('Utility Functions', () => {
     });
 
     it('should handle URL with query parameters', () => {
-      const fileName: string = extractFileName('https://example.com/audio/song.mp3?version=1&quality=high');
+      const fileName: string = extractFileName(
+        'https://example.com/audio/song.mp3?version=1&quality=high'
+      );
       expect(fileName).toBe('song.mp3');
     });
 
@@ -175,18 +182,20 @@ describe('Utility Functions', () => {
     });
 
     it('should create snapshot for empty queue', () => {
-      const channels: ExtendedAudioQueueChannel[] = [{
-        queue: [],
-        audioCompleteCallbacks: new Set(),
-        audioErrorCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
-        audioPauseCallbacks: new Set(),
-        audioResumeCallbacks: new Set(),
-        isPaused: false,
-        progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set(),
-        volume: 1.0
-      }];
+      const channels: ExtendedAudioQueueChannel[] = [
+        {
+          queue: [],
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        }
+      ];
 
       const snapshot = createQueueSnapshot(0, channels);
 
@@ -204,26 +213,28 @@ describe('Utility Functions', () => {
       const mockAudio1 = new MockAudioElement('song1.mp3');
       const mockAudio2 = new MockAudioElement('song2.mp3');
       const mockAudio3 = new MockAudioElement('song3.mp3');
-      
+
       mockAudio1.duration = 180;
       mockAudio2.duration = 240;
       mockAudio3.duration = 200;
-      
+
       mockAudio1.paused = false; // Currently playing
       mockAudio1.ended = false;
 
-      const channels: ExtendedAudioQueueChannel[] = [{
-        queue: [mockAudio1 as any, mockAudio2 as any, mockAudio3 as any],
-        audioCompleteCallbacks: new Set(),
-        audioErrorCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
-        audioPauseCallbacks: new Set(),
-        audioResumeCallbacks: new Set(),
-        isPaused: false,
-        progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set(),
-        volume: 1.0
-      }];
+      const channels: ExtendedAudioQueueChannel[] = [
+        {
+          queue: [mockAudio1 as any, mockAudio2 as any, mockAudio3 as any],
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        }
+      ];
 
       const snapshot = createQueueSnapshot(0, channels);
 
@@ -266,18 +277,20 @@ describe('Utility Functions', () => {
       const mockAudio = new MockAudioElement('test.mp3');
       mockAudio.duration = NaN;
 
-      const channels: ExtendedAudioQueueChannel[] = [{
-        queue: [mockAudio as any],
-        audioCompleteCallbacks: new Set(),
-        audioErrorCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
-        audioPauseCallbacks: new Set(),
-        audioResumeCallbacks: new Set(),
-        isPaused: false,
-        progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set(),
-        volume: 1.0
-      }];
+      const channels: ExtendedAudioQueueChannel[] = [
+        {
+          queue: [mockAudio as any],
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        }
+      ];
 
       const snapshot = createQueueSnapshot(0, channels);
 
@@ -287,27 +300,29 @@ describe('Utility Functions', () => {
     it('should correctly identify currently playing audio', () => {
       const mockAudio1 = new MockAudioElement('song1.mp3');
       const mockAudio2 = new MockAudioElement('song2.mp3');
-      
+
       // First audio is paused
       mockAudio1.paused = true;
       mockAudio1.ended = false;
-      
+
       // Second audio should not be playing (only first can be)
       mockAudio2.paused = false;
       mockAudio2.ended = false;
 
-      const channels: ExtendedAudioQueueChannel[] = [{
-        queue: [mockAudio1 as any, mockAudio2 as any],
-        audioCompleteCallbacks: new Set(),
-        audioErrorCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
-        audioPauseCallbacks: new Set(),
-        audioResumeCallbacks: new Set(),
-        isPaused: false,
-        progressCallbacks: new Map(),
-        queueChangeCallbacks: new Set(),
-        volume: 1.0
-      }];
+      const channels: ExtendedAudioQueueChannel[] = [
+        {
+          queue: [mockAudio1 as any, mockAudio2 as any],
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        }
+      ];
 
       const snapshot = createQueueSnapshot(0, channels);
 
@@ -331,7 +346,7 @@ describe('Utility Functions', () => {
       const mp3: string = cleanWebpackFilename('music.12345678.mp3');
       const wav: string = cleanWebpackFilename('sound.abcdef12.wav');
       const ogg: string = cleanWebpackFilename('audio.87654321.ogg');
-      
+
       expect(mp3).toBe('music.mp3');
       expect(wav).toBe('sound.wav');
       expect(ogg).toBe('audio.ogg');
@@ -341,7 +356,7 @@ describe('Utility Functions', () => {
       const lower: string = cleanWebpackFilename('track.abcdef12.mp3');
       const upper: string = cleanWebpackFilename('track.ABCDEF12.mp3');
       const mixed: string = cleanWebpackFilename('track.AbCdEf12.mp3');
-      
+
       expect(lower).toBe('track.mp3');
       expect(upper).toBe('track.mp3');
       expect(mixed).toBe('track.mp3');
@@ -366,7 +381,7 @@ describe('Utility Functions', () => {
       const empty: string = cleanWebpackFilename('');
       const noDots: string = cleanWebpackFilename('filename');
       const justHash: string = cleanWebpackFilename('a1b2c3d4.mp3');
-      
+
       expect(empty).toBe('');
       expect(noDots).toBe('filename');
       expect(justHash).toBe('a1b2c3d4.mp3'); // No pattern match without prefix
@@ -382,4 +397,4 @@ describe('Utility Functions', () => {
       expect(longHash).toBe('file.mp3');
     });
   });
-}); 
+});

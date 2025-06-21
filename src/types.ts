@@ -3,6 +3,12 @@
  */
 
 /**
+ * Symbol used as a key for global (channel-wide) progress callbacks
+ * This avoids the need for `null as any` type assertions
+ */
+export const GLOBAL_PROGRESS_KEY: unique symbol = Symbol('global-progress-callbacks');
+
+/**
  * Array of HTMLAudioElement objects representing an audio queue
  */
 export type AudioQueue = HTMLAudioElement[];
@@ -10,7 +16,7 @@ export type AudioQueue = HTMLAudioElement[];
 /**
  * Basic audio queue channel structure
  */
-export type AudioQueueChannel = {
+export interface AudioQueueChannel {
   queue: AudioQueue;
 }
 
@@ -228,7 +234,7 @@ export interface ExtendedAudioQueueChannel {
   audioStartCallbacks: Set<AudioStartCallback>;
   fadeState?: ChannelFadeState;
   isPaused?: boolean;
-  progressCallbacks: Map<HTMLAudioElement | null, Set<ProgressCallback>>;
+  progressCallbacks: Map<HTMLAudioElement | typeof GLOBAL_PROGRESS_KEY, Set<ProgressCallback>>;
   queue: HTMLAudioElement[];
   queueChangeCallbacks: Set<QueueChangeCallback>;
   retryConfig?: RetryConfig;
@@ -277,4 +283,8 @@ export interface ChannelFadeState {
   fadeType: FadeType;
   /** Whether the channel is currently paused due to fade */
   isPaused: boolean;
+  /** Custom duration in milliseconds if specified (overrides fade type default) */
+  customDuration?: number;
+  /** Whether the channel is currently transitioning (during any fade operation) to prevent capturing intermediate volumes during rapid pause/resume toggles */
+  isTransitioning?: boolean;
 } 

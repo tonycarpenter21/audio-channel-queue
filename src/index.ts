@@ -5,65 +5,72 @@
  */
 
 // Core queue management functions
-export { queueAudio, queueAudioPriority, stopCurrentAudioInChannel, stopAllAudioInChannel, stopAllAudio, playAudioQueue } from './core';
+export {
+  queueAudio,
+  queueAudioPriority,
+  stopCurrentAudioInChannel,
+  stopAllAudioInChannel,
+  stopAllAudio,
+  playAudioQueue
+} from './core';
 
 // Error handling and recovery functions
-export { 
-  getErrorRecovery, 
-  getRetryConfig, 
-  offAudioError, 
-  onAudioError, 
+export {
+  getErrorRecovery,
+  getRetryConfig,
+  offAudioError,
+  onAudioError,
   retryFailedAudio,
-  setErrorRecovery, 
-  setRetryConfig, 
+  setErrorRecovery,
+  setRetryConfig
 } from './errors';
 
 // Pause and resume management functions
-export { 
-  getAllChannelsPauseState, 
-  isChannelPaused, 
-  pauseAllChannels, 
+export {
+  getAllChannelsPauseState,
+  isChannelPaused,
+  pauseAllChannels,
   pauseAllWithFade,
-  pauseChannel, 
+  pauseChannel,
   pauseWithFade,
-  resumeAllChannels, 
+  resumeAllChannels,
   resumeAllWithFade,
-  resumeChannel, 
+  resumeChannel,
   resumeWithFade,
   togglePauseAllChannels,
   togglePauseAllWithFade,
   togglePauseChannel,
-  togglePauseWithFade,
+  togglePauseWithFade
 } from './pause';
 
 // Volume control and ducking functions
-export { 
+export {
   clearVolumeDucking,
   fadeVolume,
-  getAllChannelsVolume, 
-  getChannelVolume, 
+  getAllChannelsVolume,
+  getChannelVolume,
   getFadeConfig,
-  setAllChannelsVolume, 
-  setChannelVolume, 
+  setAllChannelsVolume,
+  setChannelVolume,
   setVolumeDucking,
-  transitionVolume,
+  transitionVolume
 } from './volume';
 
 // Audio information and progress tracking functions
-export { 
-  getAllChannelsInfo, 
-  getCurrentAudioInfo, 
-  getQueueSnapshot, 
-  offAudioPause, 
-  offAudioProgress, 
+export {
+  getAllChannelsInfo,
+  getCurrentAudioInfo,
+  getQueueSnapshot,
+  offAudioPause,
+  offAudioProgress,
   offAudioResume,
-  offQueueChange, 
-  onAudioComplete, 
-  onAudioPause, 
-  onAudioProgress, 
-  onAudioResume, 
-  onAudioStart, 
-  onQueueChange, 
+  offQueueChange,
+  onAudioComplete,
+  onAudioPause,
+  onAudioProgress,
+  onAudioResume,
+  onAudioStart,
+  onQueueChange
 } from './info';
 
 // Core data access for legacy compatibility
@@ -78,12 +85,12 @@ export {
 } from './utils';
 
 // TypeScript type definitions and interfaces
-export type { 
+export type {
   AudioCompleteCallback,
   AudioCompleteInfo,
   AudioErrorCallback,
   AudioErrorInfo,
-  AudioInfo, 
+  AudioInfo,
   AudioPauseCallback,
   AudioQueueOptions,
   AudioResumeCallback,
@@ -98,11 +105,8 @@ export type {
   QueueItem,
   QueueSnapshot,
   RetryConfig,
-  VolumeConfig 
+  VolumeConfig
 } from './types';
 
-// Enums
-export { 
-  EasingType,
-  FadeType 
-} from './types'; 
+// Enums and constants
+export { EasingType, FadeType, GLOBAL_PROGRESS_KEY } from './types';

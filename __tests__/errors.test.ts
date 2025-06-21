@@ -2,30 +2,32 @@
  * @jest-environment jsdom
  */
 
-import { 
-  onAudioError, 
-  offAudioError, 
-  setRetryConfig, 
-  getRetryConfig, 
-  setErrorRecovery, 
-  getErrorRecovery, 
+import {
+  onAudioError,
+  offAudioError,
+  setRetryConfig,
+  getRetryConfig,
+  setErrorRecovery,
+  getErrorRecovery,
   retryFailedAudio,
   emitAudioError,
   categorizeError,
-  setupAudioErrorHandling,
+  setupAudioErrorHandling
 } from '../src/errors';
 import { audioChannels } from '../src/info';
 import { AudioErrorInfo, RetryConfig, ErrorRecoveryOptions } from '../src/types';
 
 // Mock console methods to avoid test output noise
+ 
 console.error = jest.fn();
+ 
 console.warn = jest.fn();
 
 describe('Error Handling Functions', () => {
   beforeEach(() => {
     // Clear all audio channels before each test
     audioChannels.length = 0;
-    
+
     // Reset retry configuration
     setRetryConfig({
       enabled: true,
@@ -52,18 +54,18 @@ describe('Error Handling Functions', () => {
   describe('onAudioError and offAudioError', () => {
     it('should subscribe to audio error events', () => {
       const callback = jest.fn();
-      
+
       onAudioError(0, callback);
-      
+
       expect(audioChannels[0]).toBeDefined();
       expect(audioChannels[0].audioErrorCallbacks).toContain(callback);
     });
 
     it('should create channel if it does not exist', () => {
       const callback = jest.fn();
-      
+
       onAudioError(2, callback);
-      
+
       expect(audioChannels.length).toBe(3);
       expect(audioChannels[2].audioErrorCallbacks).toContain(callback);
     });
@@ -71,12 +73,12 @@ describe('Error Handling Functions', () => {
     it('should remove specific callback', () => {
       const callback1 = jest.fn();
       const callback2 = jest.fn();
-      
+
       onAudioError(0, callback1);
       onAudioError(0, callback2);
-      
+
       offAudioError(0, callback1);
-      
+
       expect(audioChannels[0].audioErrorCallbacks).not.toContain(callback1);
       expect(audioChannels[0].audioErrorCallbacks).toContain(callback2);
     });
@@ -84,12 +86,12 @@ describe('Error Handling Functions', () => {
     it('should remove all callbacks when no specific callback provided', () => {
       const callback1 = jest.fn();
       const callback2 = jest.fn();
-      
+
       onAudioError(0, callback1);
       onAudioError(0, callback2);
-      
+
       offAudioError(0);
-      
+
       expect(audioChannels[0].audioErrorCallbacks.size).toBe(0);
     });
 
@@ -169,7 +171,7 @@ describe('Error Handling Functions', () => {
     it('should return false for empty queue', async () => {
       // Create empty channel
       onAudioError(0, jest.fn());
-      
+
       const result = await retryFailedAudio(0);
       expect(result).toBe(false);
     });
@@ -182,7 +184,7 @@ describe('Error Handling Functions', () => {
       audioChannels[0].queue.push(mockAudio);
 
       const result = await retryFailedAudio(0);
-      
+
       expect(result).toBe(true);
       expect(mockAudio.currentTime).toBe(0);
       expect(mockAudio.play).toHaveBeenCalled();
@@ -196,7 +198,7 @@ describe('Error Handling Functions', () => {
       audioChannels[0].queue.push(mockAudio);
 
       const result = await retryFailedAudio(0);
-      
+
       expect(result).toBe(false);
       expect(mockAudio.play).toHaveBeenCalled();
     });
@@ -206,7 +208,7 @@ describe('Error Handling Functions', () => {
     it('should call all registered error callbacks', () => {
       const callback1 = jest.fn();
       const callback2 = jest.fn();
-      
+
       onAudioError(0, callback1);
       onAudioError(0, callback2);
 
@@ -231,7 +233,7 @@ describe('Error Handling Functions', () => {
         throw new Error('Callback error');
       });
       const workingCallback = jest.fn();
-      
+
       onAudioError(0, failingCallback);
       onAudioError(0, workingCallback);
 
@@ -247,7 +249,11 @@ describe('Error Handling Functions', () => {
 
       expect(() => emitAudioError(0, errorInfo, audioChannels)).not.toThrow();
       expect(workingCallback).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalledWith('Error in audio error callback:', expect.any(Error));
+       
+      expect(console.error).toHaveBeenCalledWith(
+        'Error in audio error callback:',
+        expect.any(Error)
+      );
     });
 
     it('should handle missing channel gracefully', () => {
@@ -312,7 +318,7 @@ describe('Error Handling Functions', () => {
         value: HTMLMediaElement.NETWORK_NO_SOURCE,
         writable: true
       });
-      
+
       const error = new Error('Generic error');
       expect(categorizeError(error, mockAudio)).toBe('network');
     });
@@ -334,19 +340,19 @@ describe('Error Handling Functions', () => {
     it('should set up timeout for loading', () => {
       jest.useFakeTimers();
       jest.spyOn(global, 'setTimeout');
-      
+
       setupAudioErrorHandling(mockAudio, 0, 'test.mp3');
-      
+
       expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 1000);
-      
+
       jest.useRealTimers();
     });
 
     it('should add error event listeners', () => {
       const addEventListenerSpy = jest.spyOn(mockAudio, 'addEventListener');
-      
+
       setupAudioErrorHandling(mockAudio, 0, 'test.mp3');
-      
+
       expect(addEventListenerSpy).toHaveBeenCalledWith('error', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('stalled', expect.any(Function));
@@ -356,11 +362,11 @@ describe('Error Handling Functions', () => {
 
     it('should set up error handling when onError callback provided', () => {
       const onError = jest.fn();
-      
+
       // In our test environment, setupAudioErrorHandling preserves Jest mocks
       // So instead of checking if play method was replaced, we test the functionality
       setupAudioErrorHandling(mockAudio, 0, 'test.mp3', onError);
-      
+
       // The important part is that the function doesn't throw and sets up event listeners
       // The Jest mock preservation is handled in the test setup
       expect(mockAudio.addEventListener).toHaveBeenCalledWith('error', expect.any(Function));
@@ -372,9 +378,8 @@ describe('Error Handling Functions', () => {
       const errorCallback = jest.fn();
       onAudioError(0, errorCallback);
 
-      const mockAudio = new Audio();
       const error = new Error('Failed to load audio');
-      
+
       // Simulate error handling
       const errorInfo: AudioErrorInfo = {
         channelNumber: 0,
@@ -395,7 +400,7 @@ describe('Error Handling Functions', () => {
       // Create a channel first to ensure the error callback system is set up
       onAudioError(0, jest.fn());
       setErrorRecovery({ logErrorsToAnalytics: true });
-      
+
       const errorInfo: AudioErrorInfo = {
         channelNumber: 0,
         src: 'test.mp3',
@@ -408,13 +413,14 @@ describe('Error Handling Functions', () => {
 
       emitAudioError(0, errorInfo, audioChannels);
 
+       
       expect(console.warn).toHaveBeenCalledWith('Audio Error Analytics:', errorInfo);
     });
 
     it('should handle multiple channels with different error configurations', () => {
       const callback0 = jest.fn();
       const callback1 = jest.fn();
-      
+
       onAudioError(0, callback0);
       onAudioError(1, callback1);
 
@@ -447,4 +453,4 @@ describe('Error Handling Functions', () => {
       expect(callback1).not.toHaveBeenCalledWith(errorInfo0);
     });
   });
-}); 
+});

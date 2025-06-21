@@ -20,10 +20,22 @@ const activeTransitions = new Map();
 /**
  * Predefined fade configurations for different transition types
  */
-const FADE_CONFIGS = {
-    [types_1.FadeType.Dramatic]: { duration: 800, pauseCurve: types_1.EasingType.EaseIn, resumeCurve: types_1.EasingType.EaseOut },
-    [types_1.FadeType.Gentle]: { duration: 800, pauseCurve: types_1.EasingType.EaseOut, resumeCurve: types_1.EasingType.EaseIn },
-    [types_1.FadeType.Linear]: { duration: 800, pauseCurve: types_1.EasingType.Linear, resumeCurve: types_1.EasingType.Linear }
+const fadeConfigs = {
+    [types_1.FadeType.Dramatic]: {
+        duration: 800,
+        pauseCurve: types_1.EasingType.EaseIn,
+        resumeCurve: types_1.EasingType.EaseOut
+    },
+    [types_1.FadeType.Gentle]: {
+        duration: 800,
+        pauseCurve: types_1.EasingType.EaseOut,
+        resumeCurve: types_1.EasingType.EaseIn
+    },
+    [types_1.FadeType.Linear]: {
+        duration: 800,
+        pauseCurve: types_1.EasingType.Linear,
+        resumeCurve: types_1.EasingType.Linear
+    }
 };
 /**
  * Gets the fade configuration for a specific fade type
@@ -36,7 +48,7 @@ const FADE_CONFIGS = {
  * ```
  */
 const getFadeConfig = (fadeType) => {
-    return Object.assign({}, FADE_CONFIGS[fadeType]);
+    return Object.assign({}, fadeConfigs[fadeType]);
 };
 exports.getFadeConfig = getFadeConfig;
 /**
@@ -46,7 +58,7 @@ const easingFunctions = {
     [types_1.EasingType.Linear]: (t) => t,
     [types_1.EasingType.EaseIn]: (t) => t * t,
     [types_1.EasingType.EaseOut]: (t) => t * (2 - t),
-    [types_1.EasingType.EaseInOut]: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    [types_1.EasingType.EaseInOut]: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t)
 };
 /**
  * Smoothly transitions volume for a specific channel over time
@@ -69,7 +81,14 @@ const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __await
     const volumeDelta = targetVolume - startVolume;
     // Cancel any existing transition for this channel
     if (activeTransitions.has(channelNumber)) {
-        clearTimeout(activeTransitions.get(channelNumber));
+        const transitionId = activeTransitions.get(channelNumber);
+        if (transitionId) {
+            // Handle both requestAnimationFrame and setTimeout IDs
+            if (typeof cancelAnimationFrame !== 'undefined') {
+                cancelAnimationFrame(transitionId);
+            }
+            clearTimeout(transitionId);
+        }
         activeTransitions.delete(channelNumber);
     }
     // If no change needed, resolve immediately
@@ -92,7 +111,7 @@ const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __await
             const elapsed = performance.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const easedProgress = easingFn(progress);
-            const currentVolume = startVolume + (volumeDelta * easedProgress);
+            const currentVolume = startVolume + volumeDelta * easedProgress;
             const clampedVolume = Math.max(0, Math.min(1, currentVolume));
             // Apply volume to both channel config and current audio
             channel.volume = clampedVolume;
@@ -177,8 +196,9 @@ exports.setChannelVolume = setChannelVolume;
  * ```
  */
 const getChannelVolume = (channelNumber = 0) => {
+    var _a;
     const channel = info_1.audioChannels[channelNumber];
-    return (channel === null || channel === void 0 ? void 0 : channel.volume) || 1.0;
+    return (_a = channel === null || channel === void 0 ? void 0 : channel.volume) !== null && _a !== void 0 ? _a : 1.0;
 };
 exports.getChannelVolume = getChannelVolume;
 /**
@@ -193,7 +213,7 @@ exports.getChannelVolume = getChannelVolume;
  * ```
  */
 const getAllChannelsVolume = () => {
-    return info_1.audioChannels.map((channel) => (channel === null || channel === void 0 ? void 0 : channel.volume) || 1.0);
+    return info_1.audioChannels.map((channel) => { var _a; return (_a = channel === null || channel === void 0 ? void 0 : channel.volume) !== null && _a !== void 0 ? _a : 1.0; });
 };
 exports.getAllChannelsVolume = getAllChannelsVolume;
 /**
@@ -285,11 +305,12 @@ exports.clearVolumeDucking = clearVolumeDucking;
 const applyVolumeDucking = (activeChannelNumber) => __awaiter(void 0, void 0, void 0, function* () {
     const transitionPromises = [];
     info_1.audioChannels.forEach((channel, channelNumber) => {
+        var _a, _b;
         if (channel === null || channel === void 0 ? void 0 : channel.volumeConfig) {
             const config = channel.volumeConfig;
             if (activeChannelNumber === config.priorityChannel) {
-                const duration = config.duckTransitionDuration || 250;
-                const easing = config.transitionEasing || types_1.EasingType.EaseOut;
+                const duration = (_a = config.duckTransitionDuration) !== null && _a !== void 0 ? _a : 250;
+                const easing = (_b = config.transitionEasing) !== null && _b !== void 0 ? _b : types_1.EasingType.EaseOut;
                 // Priority channel is active, duck other channels
                 if (channelNumber === config.priorityChannel) {
                     transitionPromises.push((0, exports.transitionVolume)(channelNumber, config.priorityVolume, duration, easing));
@@ -329,13 +350,14 @@ exports.fadeVolume = fadeVolume;
 const restoreVolumeLevels = (stoppedChannelNumber) => __awaiter(void 0, void 0, void 0, function* () {
     const transitionPromises = [];
     info_1.audioChannels.forEach((channel, channelNumber) => {
+        var _a, _b, _c;
         if (channel === null || channel === void 0 ? void 0 : channel.volumeConfig) {
             const config = channel.volumeConfig;
             if (stoppedChannelNumber === config.priorityChannel) {
-                const duration = config.restoreTransitionDuration || 500;
-                const easing = config.transitionEasing || types_1.EasingType.EaseOut;
+                const duration = (_a = config.restoreTransitionDuration) !== null && _a !== void 0 ? _a : 500;
+                const easing = (_b = config.transitionEasing) !== null && _b !== void 0 ? _b : types_1.EasingType.EaseOut;
                 // Priority channel stopped, restore normal volumes
-                transitionPromises.push((0, exports.transitionVolume)(channelNumber, channel.volume || 1.0, duration, easing));
+                transitionPromises.push((0, exports.transitionVolume)(channelNumber, (_c = channel.volume) !== null && _c !== void 0 ? _c : 1.0, duration, easing));
             }
         }
     });

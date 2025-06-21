@@ -1,0 +1,8 @@
+dist/
+node_modules/
+coverage/
+*.md
+*.json
+*.js
+!.eslintrc.js
+!jest.config.js 

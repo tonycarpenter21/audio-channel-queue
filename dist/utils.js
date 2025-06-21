@@ -86,6 +86,7 @@ exports.getAudioInfoFromElement = getAudioInfoFromElement;
  * ```
  */
 const createQueueSnapshot = (channelNumber, audioChannels) => {
+    var _a, _b;
     const channel = audioChannels[channelNumber];
     if (!channel)
         return null;
@@ -100,10 +101,10 @@ const createQueueSnapshot = (channelNumber, audioChannels) => {
     return {
         channelNumber,
         currentIndex: 0, // Current playing is always index 0 in our queue structure
-        isPaused: channel.isPaused || false,
+        isPaused: (_a = channel.isPaused) !== null && _a !== void 0 ? _a : false,
         items,
         totalItems: channel.queue.length,
-        volume: channel.volume || 1.0
+        volume: (_b = channel.volume) !== null && _b !== void 0 ? _b : 1.0
     };
 };
 exports.createQueueSnapshot = createQueueSnapshot;

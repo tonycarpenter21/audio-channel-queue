@@ -40,14 +40,14 @@ export const extractFileName = (url: string): string => {
  * const audioElement = new Audio('song.mp3');
  * const info = getAudioInfoFromElement(audioElement);
  * console.log(info?.progress); // Current progress as decimal (0-1)
- * 
+ *
  * // With channel context for remainingInQueue
  * const infoWithQueue = getAudioInfoFromElement(audioElement, 0, audioChannels);
  * console.log(infoWithQueue?.remainingInQueue); // Number of items left in queue
  * ```
  */
 export const getAudioInfoFromElement = (
-  audio: HTMLAudioElement, 
+  audio: HTMLAudioElement,
   channelNumber?: number,
   audioChannels?: ExtendedAudioQueueChannel[]
 ): AudioInfo | null => {
@@ -60,7 +60,7 @@ export const getAudioInfoFromElement = (
 
   // Calculate remainingInQueue if channel context is provided
   let remainingInQueue: number = 0;
-  if (channelNumber !== undefined && audioChannels && audioChannels[channelNumber]) {
+  if (channelNumber !== undefined && audioChannels?.[channelNumber]) {
     const channel = audioChannels[channelNumber];
     remainingInQueue = Math.max(0, channel.queue.length - 1); // Exclude current playing audio
   }
@@ -91,7 +91,7 @@ export const getAudioInfoFromElement = (
  * ```
  */
 export const createQueueSnapshot = (
-  channelNumber: number, 
+  channelNumber: number,
   audioChannels: ExtendedAudioQueueChannel[]
 ): QueueSnapshot | null => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
@@ -109,10 +109,10 @@ export const createQueueSnapshot = (
   return {
     channelNumber,
     currentIndex: 0, // Current playing is always index 0 in our queue structure
-    isPaused: channel.isPaused || false,
+    isPaused: channel.isPaused ?? false,
     items,
     totalItems: channel.queue.length,
-    volume: channel.volume || 1.0
+    volume: channel.volume ?? 1.0
   };
 };
 
@@ -131,4 +131,4 @@ export const createQueueSnapshot = (
 export const cleanWebpackFilename = (fileName: string): string => {
   // Remove webpack hash pattern: filename.hash.ext → filename.ext
   return fileName.replace(/\.[a-f0-9]{8,}\./i, '.');
-}; 
+};

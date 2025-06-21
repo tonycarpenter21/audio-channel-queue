@@ -6,15 +6,27 @@ import { ExtendedAudioQueueChannel, VolumeConfig, FadeType, FadeConfig, EasingTy
 import { audioChannels } from './info';
 
 // Store active volume transitions to handle interruptions
-const activeTransitions = new Map<number, number>();
+const activeTransitions: Map<number, number> = new Map();
 
 /**
  * Predefined fade configurations for different transition types
  */
-const FADE_CONFIGS: Record<FadeType, FadeConfig> = {
-  [FadeType.Dramatic]: { duration: 800, pauseCurve: EasingType.EaseIn, resumeCurve: EasingType.EaseOut },
-  [FadeType.Gentle]: { duration: 800, pauseCurve: EasingType.EaseOut, resumeCurve: EasingType.EaseIn },
-  [FadeType.Linear]: { duration: 800, pauseCurve: EasingType.Linear, resumeCurve: EasingType.Linear }
+const fadeConfigs: Record<FadeType, FadeConfig> = {
+  [FadeType.Dramatic]: {
+    duration: 800,
+    pauseCurve: EasingType.EaseIn,
+    resumeCurve: EasingType.EaseOut
+  },
+  [FadeType.Gentle]: {
+    duration: 800,
+    pauseCurve: EasingType.EaseOut,
+    resumeCurve: EasingType.EaseIn
+  },
+  [FadeType.Linear]: {
+    duration: 800,
+    pauseCurve: EasingType.Linear,
+    resumeCurve: EasingType.Linear
+  }
 };
 
 /**
@@ -28,7 +40,7 @@ const FADE_CONFIGS: Record<FadeType, FadeConfig> = {
  * ```
  */
 export const getFadeConfig = (fadeType: FadeType): FadeConfig => {
-  return { ...FADE_CONFIGS[fadeType] };
+  return { ...fadeConfigs[fadeType] };
 };
 
 /**
@@ -38,7 +50,7 @@ const easingFunctions: Record<EasingType, (t: number) => number> = {
   [EasingType.Linear]: (t: number): number => t,
   [EasingType.EaseIn]: (t: number): number => t * t,
   [EasingType.EaseOut]: (t: number): number => t * (2 - t),
-  [EasingType.EaseInOut]: (t: number): number => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+  [EasingType.EaseInOut]: (t: number): number => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t)
 };
 
 /**
@@ -65,10 +77,17 @@ export const transitionVolume = async (
   const currentAudio: HTMLAudioElement = channel.queue[0];
   const startVolume: number = currentAudio.volume;
   const volumeDelta: number = targetVolume - startVolume;
-  
+
   // Cancel any existing transition for this channel
   if (activeTransitions.has(channelNumber)) {
-    clearTimeout(activeTransitions.get(channelNumber));
+    const transitionId = activeTransitions.get(channelNumber);
+    if (transitionId) {
+      // Handle both requestAnimationFrame and setTimeout IDs
+      if (typeof cancelAnimationFrame !== 'undefined') {
+        cancelAnimationFrame(transitionId);
+      }
+      clearTimeout(transitionId);
+    }
     activeTransitions.delete(channelNumber);
   }
 
@@ -95,10 +114,10 @@ export const transitionVolume = async (
       const elapsed: number = performance.now() - startTime;
       const progress: number = Math.min(elapsed / duration, 1);
       const easedProgress: number = easingFn(progress);
-      
-      const currentVolume: number = startVolume + (volumeDelta * easedProgress);
+
+      const currentVolume: number = startVolume + volumeDelta * easedProgress;
       const clampedVolume: number = Math.max(0, Math.min(1, currentVolume));
-      
+
       // Apply volume to both channel config and current audio
       channel.volume = clampedVolume;
       if (channel.queue.length > 0) {
@@ -139,13 +158,13 @@ export const transitionVolume = async (
  * ```
  */
 export const setChannelVolume = async (
-  channelNumber: number, 
+  channelNumber: number,
   volume: number,
   transitionDuration?: number,
   easing?: EasingType
 ): Promise<void> => {
   const clampedVolume: number = Math.max(0, Math.min(1, volume));
-  
+
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = {
       audioCompleteCallbacks: new Set(),
@@ -189,7 +208,7 @@ export const setChannelVolume = async (
  */
 export const getChannelVolume = (channelNumber: number = 0): number => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  return channel?.volume || 1.0;
+  return channel?.volume ?? 1.0;
 };
 
 /**
@@ -204,9 +223,7 @@ export const getChannelVolume = (channelNumber: number = 0): number => {
  * ```
  */
 export const getAllChannelsVolume = (): number[] => {
-  return audioChannels.map((channel: ExtendedAudioQueueChannel) => 
-    channel?.volume || 1.0
-  );
+  return audioChannels.map((channel: ExtendedAudioQueueChannel) => channel?.volume ?? 1.0);
 };
 
 /**
@@ -302,11 +319,11 @@ export const applyVolumeDucking = async (activeChannelNumber: number): Promise<v
   audioChannels.forEach((channel: ExtendedAudioQueueChannel, channelNumber: number) => {
     if (channel?.volumeConfig) {
       const config: VolumeConfig = channel.volumeConfig;
-      
+
       if (activeChannelNumber === config.priorityChannel) {
-        const duration = config.duckTransitionDuration || 250;
-        const easing = config.transitionEasing || EasingType.EaseOut;
-        
+        const duration = config.duckTransitionDuration ?? 250;
+        const easing = config.transitionEasing ?? EasingType.EaseOut;
+
         // Priority channel is active, duck other channels
         if (channelNumber === config.priorityChannel) {
           transitionPromises.push(
@@ -321,7 +338,7 @@ export const applyVolumeDucking = async (activeChannelNumber: number): Promise<v
     }
   });
 
-    // Wait for all transitions to complete
+  // Wait for all transitions to complete
   await Promise.all(transitionPromises);
 };
 
@@ -345,7 +362,7 @@ export const fadeVolume = async (
   easing: EasingType = EasingType.EaseOut
 ): Promise<void> => {
   return transitionVolume(channelNumber, targetVolume, duration, easing);
-}; 
+};
 
 /**
  * Restores normal volume levels when priority channel stops with smooth transitions
@@ -358,14 +375,14 @@ export const restoreVolumeLevels = async (stoppedChannelNumber: number): Promise
   audioChannels.forEach((channel: ExtendedAudioQueueChannel, channelNumber: number) => {
     if (channel?.volumeConfig) {
       const config: VolumeConfig = channel.volumeConfig;
-      
+
       if (stoppedChannelNumber === config.priorityChannel) {
-        const duration = config.restoreTransitionDuration || 500;
-        const easing = config.transitionEasing || EasingType.EaseOut;
-        
+        const duration = config.restoreTransitionDuration ?? 500;
+        const easing = config.transitionEasing ?? EasingType.EaseOut;
+
         // Priority channel stopped, restore normal volumes
         transitionPromises.push(
-          transitionVolume(channelNumber, channel.volume || 1.0, duration, easing)
+          transitionVolume(channelNumber, channel.volume ?? 1.0, duration, easing)
         );
       }
     }
@@ -373,4 +390,4 @@ export const restoreVolumeLevels = async (stoppedChannelNumber: number): Promise
 
   // Wait for all transitions to complete
   await Promise.all(transitionPromises);
-}; 
+};

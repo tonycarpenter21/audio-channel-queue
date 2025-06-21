@@ -3,7 +3,12 @@
  * @fileoverview Type definitions for the audio-channel-queue package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FadeType = exports.EasingType = void 0;
+exports.FadeType = exports.EasingType = exports.GLOBAL_PROGRESS_KEY = void 0;
+/**
+ * Symbol used as a key for global (channel-wide) progress callbacks
+ * This avoids the need for `null as any` type assertions
+ */
+exports.GLOBAL_PROGRESS_KEY = Symbol('global-progress-callbacks');
 /**
  * Easing function types for volume transitions
  */
