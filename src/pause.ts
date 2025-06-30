@@ -14,8 +14,6 @@ import { getAudioInfoFromElement } from './utils';
 import { emitAudioPause, emitAudioResume } from './events';
 import { transitionVolume, getFadeConfig } from './volume';
 
-
-
 /**
  * Gets the current volume for a channel, accounting for synchronous state
  * @param channelNumber - The channel number
@@ -81,7 +79,7 @@ export const pauseWithFade = async (
     // First fade or no transition in progress, capture current volume
     // But ensure we don't capture a volume of 0 during a transition
     const currentVolume = getChannelVolumeSync(channelNumber);
-    originalVolume = currentVolume > 0 ? currentVolume : channel.fadeState?.originalVolume ?? 1.0;
+    originalVolume = currentVolume > 0 ? currentVolume : (channel.fadeState?.originalVolume ?? 1.0);
   }
 
   // Store fade state for resumeWithFade to use (including custom duration)
@@ -111,7 +109,7 @@ export const pauseWithFade = async (
 
   // Reset volume to original for resume (synchronously to avoid state issues)
   setChannelVolumeSync(channelNumber, originalVolume);
-  
+
   // Mark transition as complete
   if (channel.fadeState) {
     channel.fadeState.isTransitioning = false;
@@ -258,11 +256,11 @@ export const pauseAllWithFade = async (
  */
 export const resumeAllWithFade = async (fadeType?: FadeType, duration?: number): Promise<void> => {
   const resumePromises: Promise<void>[] = [];
-  
+
   audioChannels.forEach((_channel: ExtendedAudioQueueChannel, index: number) => {
     resumePromises.push(resumeWithFade(fadeType, index, duration));
   });
-  
+
   await Promise.all(resumePromises);
 };
 

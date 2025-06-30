@@ -12,11 +12,31 @@ import {
   offQueueChange,
   onAudioStart,
   onAudioComplete,
+  onAudioPause,
+  onAudioResume,
+  offAudioPause,
+  offAudioResume,
   audioChannels
 } from '../src/info';
 import { queueAudio } from '../src/core';
-import { MockAudioElement, mockCallback, waitForPromises } from './setup';
-import { AudioInfo, QueueSnapshot, AudioStartInfo, AudioCompleteInfo } from '../src/types';
+import {
+  MockAudioElement,
+  toMockAudioElement,
+  mockCallback,
+  waitForPromises,
+  getTestChannel
+} from './setup';
+import {
+  AudioInfo,
+  QueueSnapshot,
+  AudioStartInfo,
+  AudioCompleteInfo,
+  AudioPauseCallback,
+  AudioResumeCallback,
+  AudioStartCallback,
+  AudioCompleteCallback,
+  QueueChangeCallback
+} from '../src/types';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -32,14 +52,14 @@ describe('Audio Information Functions', () => {
 
     it('should return null if channel exists but queue is empty', async () => {
       audioChannels[0] = {
-        queue: [],
         audioCompleteCallbacks: new Set(),
         audioErrorCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
         isPaused: false,
         progressCallbacks: new Map(),
+        queue: [],
         queueChangeCallbacks: new Set(),
         volume: 1.0
       };
@@ -51,7 +71,7 @@ describe('Audio Information Functions', () => {
     it('should return audio info for currently playing audio', async () => {
       await queueAudio('test-song.mp3');
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.duration = 180; // 3 minutes
       mockAudio.currentTime = 60; // 1 minute
       mockAudio.paused = false;
@@ -84,7 +104,7 @@ describe('Audio Information Functions', () => {
     it('should handle NaN duration and currentTime gracefully', async () => {
       await queueAudio('test.mp3');
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.duration = NaN;
       mockAudio.currentTime = NaN;
 
@@ -94,6 +114,49 @@ describe('Audio Information Functions', () => {
       expect(info?.currentTime).toBe(0);
       expect(info?.progress).toBe(0);
     });
+
+    it('should handle zero duration gracefully', async () => {
+      await queueAudio('test.mp3');
+
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.duration = 0;
+      mockAudio.currentTime = 10;
+
+      const info = getCurrentAudioInfo(0);
+
+      expect(info?.duration).toBe(0);
+      expect(info?.currentTime).toBe(10000);
+      expect(info?.progress).toBe(0);
+    });
+
+    it('should handle negative values gracefully', async () => {
+      await queueAudio('test.mp3');
+
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.duration = -5;
+      mockAudio.currentTime = -2;
+
+      const info = getCurrentAudioInfo(0);
+
+      // Note: The actual implementation doesn't clamp negative values, it returns them as-is
+      expect(info?.duration).toBe(-5000); // Converted to milliseconds
+      expect(info?.currentTime).toBe(-2000); // Converted to milliseconds
+      expect(info?.progress).toBe(0);
+    });
+
+    it('should handle looping audio correctly', async () => {
+      await queueAudio('test.mp3');
+
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.duration = 100;
+      mockAudio.currentTime = 30;
+      mockAudio.loop = true;
+
+      const info = getCurrentAudioInfo(0);
+
+      expect(info?.isLooping).toBe(true);
+      expect(info?.progress).toBe(0.3);
+    });
   });
 
   describe('getAllChannelsInfo', () => {
@@ -102,21 +165,20 @@ describe('Audio Information Functions', () => {
       expect(allInfo).toEqual([]);
     });
 
-    it('should return array with nulls for empty channels and info for active channels', 
-       async () => {
+    it('should return array with nulls for empty channels and info for active ones', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 2);
 
       // Create empty channel 1
       audioChannels[1] = {
-        queue: [],
         audioCompleteCallbacks: new Set(),
         audioErrorCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
         isPaused: false,
         progressCallbacks: new Map(),
+        queue: [],
         queueChangeCallbacks: new Set(),
         volume: 1.0
       };
@@ -189,14 +251,14 @@ describe('Audio Information Functions', () => {
 
     it('should handle empty queue', async () => {
       audioChannels[0] = {
-        queue: [],
         audioCompleteCallbacks: new Set(),
         audioErrorCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
         audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
         isPaused: false,
         progressCallbacks: new Map(),
+        queue: [],
         queueChangeCallbacks: new Set(),
         volume: 1.0
       };
@@ -211,6 +273,24 @@ describe('Audio Information Functions', () => {
         totalItems: 0,
         volume: 1.0
       });
+    });
+
+    it('should use default channel 0 when no channel specified', async () => {
+      await queueAudio('test-audio.mp3');
+
+      // Set up mock audio duration
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.duration = 120;
+      mockAudio.paused = false;
+
+      // Test calling with no parameters (should default to channel 0)
+      const snapshot = getQueueSnapshot();
+
+      expect(snapshot).not.toBeNull();
+      expect(snapshot!.channelNumber).toBe(0);
+      expect(snapshot!.totalItems).toBe(1);
+      expect(snapshot!.items[0].fileName).toBe('test-audio.mp3');
+      expect(snapshot!.items[0].duration).toBe(120000);
     });
   });
 });
@@ -232,7 +312,7 @@ describe('Audio Progress Tracking', () => {
 
       onAudioProgress(0, callback);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.simulateTimeUpdate(30);
 
       expect(callback).toHaveBeenCalled();
@@ -248,7 +328,7 @@ describe('Audio Progress Tracking', () => {
       onAudioProgress(0, callback1);
       onAudioProgress(0, callback2);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.simulateTimeUpdate(45);
 
       expect(callback1).toHaveBeenCalled();
@@ -264,11 +344,59 @@ describe('Audio Progress Tracking', () => {
 
       onAudioProgress(0, errorCallback);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.simulateTimeUpdate(15);
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
+    });
+
+    describe('onAudioProgress edge cases', () => {
+      it('should handle when progressCallbacks exists but audio is not in map', async () => {
+        await queueAudio('test.mp3');
+
+        // First call creates the callbacks
+        const callback1 = jest.fn();
+        onAudioProgress(0, callback1);
+
+        // Second call with same channel but callback map already exists
+        const callback2 = jest.fn();
+        onAudioProgress(0, callback2);
+
+        const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+        mockAudio.simulateTimeUpdate(30);
+
+        // Both callbacks should be called
+        expect(callback1).toHaveBeenCalled();
+        expect(callback2).toHaveBeenCalled();
+      });
+
+      it('should handle channel with progressCallbacks set to undefined', async () => {
+        // Create a channel with a valid number
+        const channelNumber: number = getTestChannel();
+
+        // Setup a minimal channel with progressCallbacks
+        audioChannels[channelNumber] = {
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queue: [],
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        };
+
+        // Break the progressCallbacks by setting to undefined
+        (
+          audioChannels[channelNumber] as unknown as { progressCallbacks: undefined }
+        ).progressCallbacks = undefined;
+
+        expect(() => onAudioProgress(channelNumber, jest.fn())).not.toThrow();
+        expect(audioChannels[channelNumber].progressCallbacks).toBeDefined();
+      });
     });
   });
 
@@ -280,7 +408,7 @@ describe('Audio Progress Tracking', () => {
       onAudioProgress(0, callback);
       offAudioProgress(0);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.simulateTimeUpdate(30);
 
       expect(callback).not.toHaveBeenCalled();
@@ -288,6 +416,23 @@ describe('Audio Progress Tracking', () => {
 
     it('should handle non-existent channel gracefully', () => {
       expect(() => offAudioProgress(99)).not.toThrow();
+    });
+
+    it('should use default channel 0 when no channel specified', async () => {
+      await queueAudio('test.mp3');
+      const callback = mockCallback<(info: AudioInfo) => void>();
+
+      // Set up callback on channel 0
+      onAudioProgress(0, callback);
+
+      // Clear callbacks using default parameter (should clear channel 0)
+      offAudioProgress();
+
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.simulateTimeUpdate(30);
+
+      // Callback should not be called since we cleared it
+      expect(callback).not.toHaveBeenCalled();
     });
   });
 });
@@ -327,6 +472,28 @@ describe('Queue Change Events', () => {
 
       expect(callback).not.toHaveBeenCalled();
     });
+
+    describe('offQueueChange edge cases', () => {
+      it('should handle channel with queueChangeCallbacks set to undefined', () => {
+        // Create channel with undefined queueChangeCallbacks
+        const testChannel = getTestChannel();
+        audioChannels[testChannel] = {
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queue: [],
+          queueChangeCallbacks: undefined as unknown as Set<QueueChangeCallback>,
+          volume: 1.0
+        };
+
+        // Should not throw
+        expect(() => offQueueChange(testChannel)).not.toThrow();
+      });
+    });
   });
 });
 
@@ -346,6 +513,33 @@ describe('Audio Lifecycle Events', () => {
       expect(startInfo.fileName).toBe('test-song.mp3');
       expect(startInfo.channelNumber).toBe(0);
     });
+
+    describe('onAudioStart edge cases', () => {
+      it('should handle channel with audioStartCallbacks set to undefined', () => {
+        // Create channel with undefined audioStartCallbacks
+        const testChannel = getTestChannel();
+        audioChannels[testChannel] = {
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          audioStartCallbacks: undefined as unknown as Set<AudioStartCallback>,
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queue: [],
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        };
+
+        const callback = jest.fn();
+
+        // This should create the audioStartCallbacks set
+        onAudioStart(testChannel, callback);
+
+        expect(audioChannels[testChannel].audioStartCallbacks).toBeDefined();
+        expect(audioChannels[testChannel].audioStartCallbacks.has(callback)).toBe(true);
+      });
+    });
   });
 
   describe('onAudioComplete', () => {
@@ -359,7 +553,7 @@ describe('Audio Lifecycle Events', () => {
       // Wait for audio to start playing first
       await waitForPromises(50);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       // Simulate that audio has started and then ended
       mockAudio.paused = false;
       mockAudio.ended = false;
@@ -373,5 +567,173 @@ describe('Audio Lifecycle Events', () => {
       expect(completeInfo.fileName).toBe('test1.mp3');
       expect(completeInfo.remainingInQueue).toBe(1);
     });
+
+    it('should initialize channel when calling onAudioComplete on non-existent channel', () => {
+      const callback = jest.fn();
+      const testChannel = getTestChannel();
+
+      // Call onAudioComplete on channel that doesn't exist
+      onAudioComplete(testChannel, callback);
+
+      // Verify channel was created
+      expect(audioChannels[testChannel]).toBeDefined();
+      expect(audioChannels[testChannel].audioCompleteCallbacks).toBeDefined();
+      expect(audioChannels[testChannel].audioCompleteCallbacks.has(callback)).toBe(true);
+    });
+
+    describe('onAudioComplete edge cases', () => {
+      it('should handle channel with audioCompleteCallbacks set to undefined', () => {
+        // Create channel with undefined audioCompleteCallbacks
+        const testChannel = getTestChannel();
+        audioChannels[testChannel] = {
+          audioCompleteCallbacks: undefined as unknown as Set<AudioCompleteCallback>,
+          audioErrorCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queue: [],
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        };
+
+        const callback = jest.fn();
+
+        // This should create the audioCompleteCallbacks set
+        onAudioComplete(testChannel, callback);
+
+        expect(audioChannels[testChannel].audioCompleteCallbacks).toBeDefined();
+        expect(audioChannels[testChannel].audioCompleteCallbacks.has(callback)).toBe(true);
+      });
+    });
+  });
+
+  it('should initialize channel when calling onAudioPause on non-existent channel', () => {
+    const callback = jest.fn();
+    const testChannel = getTestChannel();
+
+    // Call onAudioPause on channel that doesn't exist
+    onAudioPause(testChannel, callback);
+
+    // Verify channel was created
+    expect(audioChannels[testChannel]).toBeDefined();
+    expect(audioChannels[testChannel].audioPauseCallbacks).toBeDefined();
+    expect(audioChannels[testChannel].audioPauseCallbacks.has(callback)).toBe(true);
+  });
+
+  it('should initialize channel when calling onAudioResume on non-existent channel', () => {
+    const callback = jest.fn();
+    const testChannel = getTestChannel();
+
+    // Call onAudioResume on channel that doesn't exist
+    onAudioResume(testChannel, callback);
+
+    // Verify channel was created
+    expect(audioChannels[testChannel]).toBeDefined();
+    expect(audioChannels[testChannel].audioResumeCallbacks).toBeDefined();
+    expect(audioChannels[testChannel].audioResumeCallbacks.has(callback)).toBe(true);
+  });
+
+  it('should handle offAudioPause with non-existent channel', () => {
+    // Try to remove callbacks from non-existent channel
+    expect(() => offAudioPause(999)).not.toThrow();
+  });
+
+  it('should handle offAudioPause with channel that has no pause callbacks', () => {
+    // Create channel without pause callbacks
+    const testChannel = getTestChannel();
+    audioChannels[testChannel] = {
+      audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
+      audioPauseCallbacks: undefined as unknown as Set<AudioPauseCallback>,
+      audioResumeCallbacks: new Set(),
+      audioStartCallbacks: new Set(),
+      isPaused: false,
+      progressCallbacks: new Map(),
+      queue: [],
+      queueChangeCallbacks: new Set(),
+      volume: 1.0
+    };
+
+    expect(() => offAudioPause(testChannel)).not.toThrow();
+  });
+
+  it('should handle offAudioResume with non-existent channel', () => {
+    // Try to remove callbacks from non-existent channel
+    expect(() => offAudioResume(999)).not.toThrow();
+  });
+
+  it('should handle offAudioResume with channel that has no resume callbacks', () => {
+    // Create channel without resume callbacks
+    const testChannel = getTestChannel();
+    audioChannels[testChannel] = {
+      audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
+      audioPauseCallbacks: new Set(),
+      audioResumeCallbacks: undefined as unknown as Set<AudioResumeCallback>,
+      audioStartCallbacks: new Set(),
+      isPaused: false,
+      progressCallbacks: new Map(),
+      queue: [],
+      queueChangeCallbacks: new Set(),
+      volume: 1.0
+    };
+
+    expect(() => offAudioResume(testChannel)).not.toThrow();
+  });
+});
+
+describe('onAudioPause edge cases', () => {
+  it('should handle channel with audioPauseCallbacks set to undefined', () => {
+    // Create channel with undefined audioPauseCallbacks
+    const testChannel = getTestChannel();
+    audioChannels[testChannel] = {
+      audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
+      audioPauseCallbacks: undefined as unknown as Set<AudioPauseCallback>,
+      audioResumeCallbacks: new Set(),
+      audioStartCallbacks: new Set(),
+      isPaused: false,
+      progressCallbacks: new Map(),
+      queue: [],
+      queueChangeCallbacks: new Set(),
+      volume: 1.0
+    };
+
+    const callback = jest.fn();
+
+    // This should create the audioPauseCallbacks set
+    onAudioPause(testChannel, callback);
+
+    expect(audioChannels[testChannel].audioPauseCallbacks).toBeDefined();
+    expect(audioChannels[testChannel].audioPauseCallbacks.has(callback)).toBe(true);
+  });
+});
+
+describe('onAudioResume edge cases', () => {
+  it('should handle channel with audioResumeCallbacks set to undefined', () => {
+    // Create channel with undefined audioResumeCallbacks
+    const testChannel = getTestChannel();
+    audioChannels[testChannel] = {
+      audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
+      audioPauseCallbacks: new Set(),
+      audioResumeCallbacks: undefined as unknown as Set<AudioResumeCallback>,
+      audioStartCallbacks: new Set(),
+      isPaused: false,
+      progressCallbacks: new Map(),
+      queue: [],
+      queueChangeCallbacks: new Set(),
+      volume: 1.0
+    };
+
+    const callback = jest.fn();
+
+    // This should create the audioResumeCallbacks set
+    onAudioResume(testChannel, callback);
+
+    expect(audioChannels[testChannel].audioResumeCallbacks).toBeDefined();
+    expect(audioChannels[testChannel].audioResumeCallbacks.has(callback)).toBe(true);
   });
 });

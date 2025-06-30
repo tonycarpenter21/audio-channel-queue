@@ -2,11 +2,27 @@
  * @fileoverview Volume management functions for the audio-channel-queue package
  */
 
-import { ExtendedAudioQueueChannel, VolumeConfig, FadeType, FadeConfig, EasingType } from './types';
+import {
+  ExtendedAudioQueueChannel,
+  VolumeConfig,
+  FadeType,
+  FadeConfig,
+  EasingType,
+  TimerType,
+  MAX_CHANNELS
+} from './types';
 import { audioChannels } from './info';
 
 // Store active volume transitions to handle interruptions
 const activeTransitions: Map<number, number> = new Map();
+// Track which timer type was used for each channel
+const timerTypes: Map<number, TimerType> = new Map();
+
+/**
+ * Global volume ducking configuration
+ * Stores the volume ducking settings that apply to all channels
+ */
+let globalVolumeConfig: VolumeConfig | null = null;
 
 /**
  * Predefined fade configurations for different transition types
@@ -81,14 +97,20 @@ export const transitionVolume = async (
   // Cancel any existing transition for this channel
   if (activeTransitions.has(channelNumber)) {
     const transitionId = activeTransitions.get(channelNumber);
+    const timerType = timerTypes.get(channelNumber);
     if (transitionId) {
-      // Handle both requestAnimationFrame and setTimeout IDs
-      if (typeof cancelAnimationFrame !== 'undefined') {
+      // Cancel based on the timer type that was actually used
+      if (
+        timerType === TimerType.RequestAnimationFrame &&
+        typeof cancelAnimationFrame !== 'undefined'
+      ) {
         cancelAnimationFrame(transitionId);
+      } else if (timerType === TimerType.Timeout) {
+        clearTimeout(transitionId);
       }
-      clearTimeout(transitionId);
     }
     activeTransitions.delete(channelNumber);
+    timerTypes.delete(channelNumber);
   }
 
   // If no change needed, resolve immediately
@@ -97,8 +119,8 @@ export const transitionVolume = async (
     return Promise.resolve();
   }
 
-  // Handle zero duration - instant change
-  if (duration === 0) {
+  // Handle zero or negative duration - instant change
+  if (duration <= 0) {
     channel.volume = targetVolume;
     if (channel.queue.length > 0) {
       channel.queue[0].volume = targetVolume;
@@ -127,16 +149,19 @@ export const transitionVolume = async (
       if (progress >= 1) {
         // Transition complete
         activeTransitions.delete(channelNumber);
+        timerTypes.delete(channelNumber);
         resolve();
       } else {
         // Use requestAnimationFrame in browser, setTimeout in tests
         if (typeof requestAnimationFrame !== 'undefined') {
           const rafId = requestAnimationFrame(updateVolume);
           activeTransitions.set(channelNumber, rafId as unknown as number);
+          timerTypes.set(channelNumber, TimerType.RequestAnimationFrame);
         } else {
           // In test environment, use shorter intervals
           const timeoutId = setTimeout(updateVolume, 1);
           activeTransitions.set(channelNumber, timeoutId as unknown as number);
+          timerTypes.set(channelNumber, TimerType.Timeout);
         }
       }
     };
@@ -151,6 +176,7 @@ export const transitionVolume = async (
  * @param volume - Volume level (0-1)
  * @param transitionDuration - Optional transition duration in milliseconds
  * @param easing - Optional easing function
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * setChannelVolume(0, 0.5); // Set channel 0 to 50%
@@ -164,6 +190,16 @@ export const setChannelVolume = async (
   easing?: EasingType
 ): Promise<void> => {
   const clampedVolume: number = Math.max(0, Math.min(1, volume));
+
+  // Check channel number limits
+  if (channelNumber < 0) {
+    throw new Error('Channel number must be non-negative');
+  }
+  if (channelNumber >= MAX_CHANNELS) {
+    throw new Error(
+      `Channel number ${channelNumber} exceeds maximum allowed channels (${MAX_CHANNELS})`
+    );
+  }
 
   if (!audioChannels[channelNumber]) {
     audioChannels[channelNumber] = {
@@ -246,6 +282,7 @@ export const setAllChannelsVolume = async (volume: number): Promise<void> => {
  * Configures volume ducking for channels. When the priority channel plays audio,
  * all other channels will be automatically reduced to the ducking volume level
  * @param config - Volume ducking configuration
+ * @throws Error if the priority channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * // When channel 1 plays, reduce all other channels to 20% volume
@@ -257,8 +294,23 @@ export const setAllChannelsVolume = async (volume: number): Promise<void> => {
  * ```
  */
 export const setVolumeDucking = (config: VolumeConfig): void => {
-  // First, ensure we have enough channels for the priority channel
-  while (audioChannels.length <= config.priorityChannel) {
+  const { priorityChannel } = config;
+
+  // Check priority channel limits
+  if (priorityChannel < 0) {
+    throw new Error('Priority channel number must be non-negative');
+  }
+  if (priorityChannel >= MAX_CHANNELS) {
+    throw new Error(
+      `Priority channel ${priorityChannel} exceeds maximum allowed channels (${MAX_CHANNELS})`
+    );
+  }
+
+  // Store the configuration globally
+  globalVolumeConfig = config;
+
+  // Ensure we have enough channels for the priority channel
+  while (audioChannels.length <= priorityChannel) {
     audioChannels.push({
       audioCompleteCallbacks: new Set(),
       audioErrorCallbacks: new Set(),
@@ -272,25 +324,6 @@ export const setVolumeDucking = (config: VolumeConfig): void => {
       volume: 1.0
     });
   }
-
-  // Apply the config to all existing channels
-  audioChannels.forEach((channel: ExtendedAudioQueueChannel, index: number) => {
-    if (!audioChannels[index]) {
-      audioChannels[index] = {
-        audioCompleteCallbacks: new Set(),
-        audioErrorCallbacks: new Set(),
-        audioPauseCallbacks: new Set(),
-        audioResumeCallbacks: new Set(),
-        audioStartCallbacks: new Set(),
-        isPaused: false,
-        progressCallbacks: new Map(),
-        queue: [],
-        queueChangeCallbacks: new Set(),
-        volume: 1.0
-      };
-    }
-    audioChannels[index].volumeConfig = config;
-  });
 };
 
 /**
@@ -301,11 +334,7 @@ export const setVolumeDucking = (config: VolumeConfig): void => {
  * ```
  */
 export const clearVolumeDucking = (): void => {
-  audioChannels.forEach((channel: ExtendedAudioQueueChannel) => {
-    if (channel) {
-      delete channel.volumeConfig;
-    }
-  });
+  globalVolumeConfig = null;
 };
 
 /**
@@ -314,27 +343,36 @@ export const clearVolumeDucking = (): void => {
  * @internal
  */
 export const applyVolumeDucking = async (activeChannelNumber: number): Promise<void> => {
+  // Check if ducking is configured and this channel is the priority channel
+  if (!globalVolumeConfig || globalVolumeConfig.priorityChannel !== activeChannelNumber) {
+    return; // No ducking configured for this channel
+  }
+
+  const config = globalVolumeConfig;
   const transitionPromises: Promise<void>[] = [];
+  const duration = config.duckTransitionDuration ?? 250;
+  const easing = config.transitionEasing ?? EasingType.EaseOut;
 
+  // Duck all channels except the priority channel
   audioChannels.forEach((channel: ExtendedAudioQueueChannel, channelNumber: number) => {
-    if (channel?.volumeConfig) {
-      const config: VolumeConfig = channel.volumeConfig;
+    if (!channel || channel.queue.length === 0) {
+      return; // Skip channels without audio
+    }
 
-      if (activeChannelNumber === config.priorityChannel) {
-        const duration = config.duckTransitionDuration ?? 250;
-        const easing = config.transitionEasing ?? EasingType.EaseOut;
-
-        // Priority channel is active, duck other channels
-        if (channelNumber === config.priorityChannel) {
-          transitionPromises.push(
-            transitionVolume(channelNumber, config.priorityVolume, duration, easing)
-          );
-        } else {
-          transitionPromises.push(
-            transitionVolume(channelNumber, config.duckingVolume, duration, easing)
-          );
-        }
-      }
+    if (channelNumber === activeChannelNumber) {
+      // This is the priority channel - set to priority volume
+      // Only change audio volume, preserve channel.volume as desired volume
+      const currentAudio: HTMLAudioElement = channel.queue[0];
+      transitionPromises.push(
+        transitionAudioVolume(currentAudio, config.priorityVolume, duration, easing)
+      );
+    } else {
+      // This is a background channel - duck it
+      // Only change audio volume, preserve channel.volume as desired volume
+      const currentAudio: HTMLAudioElement = channel.queue[0];
+      transitionPromises.push(
+        transitionAudioVolume(currentAudio, config.duckingVolume, duration, easing)
+      );
     }
   });
 
@@ -365,29 +403,143 @@ export const fadeVolume = async (
 };
 
 /**
- * Restores normal volume levels when priority channel stops with smooth transitions
+ * Restores normal volume levels when priority channel queue becomes empty
  * @param stoppedChannelNumber - The channel that just stopped playing
  * @internal
  */
 export const restoreVolumeLevels = async (stoppedChannelNumber: number): Promise<void> => {
+  // Check if ducking is configured and this channel is the priority channel
+  if (!globalVolumeConfig || globalVolumeConfig.priorityChannel !== stoppedChannelNumber) {
+    return; // No ducking configured for this channel
+  }
+
+  // Check if the priority channel queue is now empty
+  const priorityChannel = audioChannels[stoppedChannelNumber];
+  if (priorityChannel && priorityChannel.queue.length > 0) {
+    return; // Priority channel still has audio queued, don't restore yet
+  }
+
+  const config = globalVolumeConfig;
   const transitionPromises: Promise<void>[] = [];
 
+  // Restore volume for all channels EXCEPT the priority channel
   audioChannels.forEach((channel: ExtendedAudioQueueChannel, channelNumber: number) => {
-    if (channel?.volumeConfig) {
-      const config: VolumeConfig = channel.volumeConfig;
-
-      if (stoppedChannelNumber === config.priorityChannel) {
-        const duration = config.restoreTransitionDuration ?? 500;
-        const easing = config.transitionEasing ?? EasingType.EaseOut;
-
-        // Priority channel stopped, restore normal volumes
-        transitionPromises.push(
-          transitionVolume(channelNumber, channel.volume ?? 1.0, duration, easing)
-        );
-      }
+    // Skip the priority channel itself and channels without audio
+    if (channelNumber === stoppedChannelNumber || !channel || channel.queue.length === 0) {
+      return;
     }
+
+    // Restore this channel to its desired volume
+    const duration = config.restoreTransitionDuration ?? 500;
+    const easing = config.transitionEasing ?? EasingType.EaseOut;
+    const targetVolume = channel.volume ?? 1.0;
+
+    // Only transition the audio element volume, keep channel.volume as the desired volume
+    const currentAudio: HTMLAudioElement = channel.queue[0];
+    transitionPromises.push(transitionAudioVolume(currentAudio, targetVolume, duration, easing));
   });
 
   // Wait for all transitions to complete
   await Promise.all(transitionPromises);
+};
+
+/**
+ * Transitions only the audio element volume without affecting channel.volume
+ * This is used for ducking/restoration where channel.volume represents desired volume
+ * @param audio - The audio element to transition
+ * @param targetVolume - Target volume level (0-1)
+ * @param duration - Transition duration in milliseconds
+ * @param easing - Easing function type
+ * @returns Promise that resolves when transition completes
+ * @internal
+ */
+const transitionAudioVolume = async (
+  audio: HTMLAudioElement,
+  targetVolume: number,
+  duration: number = 250,
+  easing: EasingType = EasingType.EaseOut
+): Promise<void> => {
+  const startVolume: number = audio.volume;
+  const volumeDelta: number = targetVolume - startVolume;
+
+  // If no change needed, resolve immediately
+  if (Math.abs(volumeDelta) < 0.001) {
+    return Promise.resolve();
+  }
+
+  // Handle zero or negative duration - instant change
+  if (duration <= 0) {
+    audio.volume = Math.max(0, Math.min(1, targetVolume));
+    return Promise.resolve();
+  }
+
+  const startTime: number = performance.now();
+  const easingFn = easingFunctions[easing];
+
+  return new Promise<void>((resolve) => {
+    const updateVolume = (): void => {
+      const elapsed: number = performance.now() - startTime;
+      const progress: number = Math.min(elapsed / duration, 1);
+      const easedProgress: number = easingFn(progress);
+
+      const currentVolume: number = startVolume + volumeDelta * easedProgress;
+      const clampedVolume: number = Math.max(0, Math.min(1, currentVolume));
+
+      // Only apply volume to audio element, not channel.volume
+      audio.volume = clampedVolume;
+
+      if (progress >= 1) {
+        resolve();
+      } else {
+        // Use requestAnimationFrame in browser, setTimeout in tests
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(updateVolume);
+        } else {
+          setTimeout(updateVolume, 1);
+        }
+      }
+    };
+
+    updateVolume();
+  });
+};
+
+/**
+ * Cancels any active volume transition for a specific channel
+ * @param channelNumber - The channel number to cancel transitions for
+ * @internal
+ */
+export const cancelVolumeTransition = (channelNumber: number): void => {
+  if (activeTransitions.has(channelNumber)) {
+    const transitionId = activeTransitions.get(channelNumber);
+    const timerType = timerTypes.get(channelNumber);
+
+    if (transitionId) {
+      // Cancel based on the timer type that was actually used
+      if (
+        timerType === TimerType.RequestAnimationFrame &&
+        typeof cancelAnimationFrame !== 'undefined'
+      ) {
+        cancelAnimationFrame(transitionId);
+      } else if (timerType === TimerType.Timeout) {
+        clearTimeout(transitionId);
+      }
+    }
+
+    activeTransitions.delete(channelNumber);
+    timerTypes.delete(channelNumber);
+  }
+};
+
+/**
+ * Cancels all active volume transitions across all channels
+ * @internal
+ */
+export const cancelAllVolumeTransitions = (): void => {
+  // Get all active channel numbers to avoid modifying Map while iterating
+  const activeChannels = Array.from(activeTransitions.keys());
+
+  activeChannels.forEach((channelNumber) => {
+    cancelVolumeTransition(channelNumber);
+  });
 };

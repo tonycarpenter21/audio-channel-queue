@@ -6,9 +6,11 @@ import {
   extractFileName,
   getAudioInfoFromElement,
   createQueueSnapshot,
-  cleanWebpackFilename
+  cleanWebpackFilename,
+  validateAudioUrl,
+  sanitizeForDisplay
 } from '../src/utils';
-import { MockAudioElement } from './setup';
+import { MockAudioElement, toHTMLAudioElement } from './setup';
 import { AudioInfo, ExtendedAudioQueueChannel } from '../src/types';
 
 describe('Utility Functions', () => {
@@ -59,16 +61,44 @@ describe('Utility Functions', () => {
       const fileName: string = extractFileName('file:///C:/Users/music/song.mp3');
       expect(fileName).toBe('song.mp3');
     });
+
+    it('should return filename when URL parsing fails but path has filename', () => {
+      // This tests the catch block where URL parsing fails but we can still extract filename
+      const fileName: string = extractFileName('not-a-url/but/has/path/audio.mp3');
+      expect(fileName).toBe('audio.mp3');
+    });
+
+    it('should return original input when no path separators exist', () => {
+      // This tests the catch block returning the fileName variable
+      const fileName: string = extractFileName('filename.mp3');
+      expect(fileName).toBe('filename.mp3');
+    });
+
+    it('should handle query parameters correctly', () => {
+      // Test with query parameter - in real URLs, special characters would be encoded
+      const queryUrl = '/audio/song.mp3?name=test&id=123';
+      expect(extractFileName(queryUrl)).toBe('song.mp3');
+
+      // Test with URL-encoded query parameter injection (realistic scenario)
+      const queryXss = '/audio/track.mp3?name=%3Cscript%3Ealert%28%22xss%22%29%3C%2Fscript%3E';
+      expect(extractFileName(queryXss)).toBe('track.mp3');
+
+      // Test with hash fragment
+      const hashUrl = '/audio/music.mp3#timestamp=120';
+      expect(extractFileName(hashUrl)).toBe('music.mp3');
+    });
   });
 
   describe('getAudioInfoFromElement', () => {
     it('should return null for null audio element', () => {
-      const info: AudioInfo | null = getAudioInfoFromElement(null as any);
+      const info: AudioInfo | null = getAudioInfoFromElement(null as unknown as HTMLAudioElement);
       expect(info).toBeNull();
     });
 
     it('should return null for undefined audio element', () => {
-      const info: AudioInfo | null = getAudioInfoFromElement(undefined as any);
+      const info: AudioInfo | null = getAudioInfoFromElement(
+        undefined as unknown as HTMLAudioElement
+      );
       expect(info).toBeNull();
     });
 
@@ -80,7 +110,7 @@ describe('Utility Functions', () => {
       mockAudio.ended = false;
       mockAudio.readyState = 4;
 
-      const info: AudioInfo | null = getAudioInfoFromElement(mockAudio as any);
+      const info: AudioInfo | null = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info).toEqual({
         currentTime: 60000, // Converted to milliseconds
@@ -101,7 +131,7 @@ describe('Utility Functions', () => {
       mockAudio.duration = NaN;
       mockAudio.currentTime = 30;
 
-      const info = getAudioInfoFromElement(mockAudio as any);
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info?.duration).toBe(0);
       expect(info?.currentTime).toBe(30000);
@@ -113,7 +143,7 @@ describe('Utility Functions', () => {
       mockAudio.duration = 120;
       mockAudio.currentTime = NaN;
 
-      const info = getAudioInfoFromElement(mockAudio as any);
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info?.duration).toBe(120000);
       expect(info?.currentTime).toBe(0);
@@ -126,7 +156,7 @@ describe('Utility Functions', () => {
       mockAudio.ended = false;
       mockAudio.readyState = 4;
 
-      const info = getAudioInfoFromElement(mockAudio as any);
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info?.isPlaying).toBe(false);
     });
@@ -137,7 +167,7 @@ describe('Utility Functions', () => {
       mockAudio.ended = true;
       mockAudio.readyState = 4;
 
-      const info = getAudioInfoFromElement(mockAudio as any);
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info?.isPlaying).toBe(false);
     });
@@ -148,7 +178,7 @@ describe('Utility Functions', () => {
       mockAudio.ended = false;
       mockAudio.readyState = 2; // HAVE_CURRENT_DATA, not enough to play
 
-      const info = getAudioInfoFromElement(mockAudio as any);
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info?.isPlaying).toBe(false);
     });
@@ -158,7 +188,7 @@ describe('Utility Functions', () => {
       mockAudio.duration = 100;
       mockAudio.currentTime = 150; // More than duration
 
-      const info = getAudioInfoFromElement(mockAudio as any);
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info?.progress).toBe(1);
     });
@@ -168,9 +198,50 @@ describe('Utility Functions', () => {
       mockAudio.duration = 0;
       mockAudio.currentTime = 30;
 
-      const info = getAudioInfoFromElement(mockAudio as any);
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio));
 
       expect(info?.progress).toBe(0);
+    });
+
+    it('should calculate remainingInQueue when channel context is provided', () => {
+      const mockAudio = new MockAudioElement('test.mp3');
+      mockAudio.duration = 120;
+      mockAudio.currentTime = 60;
+      mockAudio.paused = false;
+      mockAudio.ended = false;
+      mockAudio.readyState = 4;
+
+      const channels: ExtendedAudioQueueChannel[] = [
+        {
+          audioCompleteCallbacks: new Set(),
+          audioErrorCallbacks: new Set(),
+          audioPauseCallbacks: new Set(),
+          audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
+          isPaused: false,
+          progressCallbacks: new Map(),
+          queue: [
+            toHTMLAudioElement(mockAudio),
+            toHTMLAudioElement(new MockAudioElement('next1.mp3')),
+            toHTMLAudioElement(new MockAudioElement('next2.mp3'))
+          ],
+          queueChangeCallbacks: new Set(),
+          volume: 1.0
+        }
+      ];
+
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio), 0, channels);
+
+      expect(info?.remainingInQueue).toBe(2); // 3 total items - 1 currently playing
+    });
+
+    it('should handle missing channel when calculating remainingInQueue', () => {
+      const mockAudio = new MockAudioElement('test.mp3');
+      const channels: ExtendedAudioQueueChannel[] = [];
+
+      const info = getAudioInfoFromElement(toHTMLAudioElement(mockAudio), 0, channels);
+
+      expect(info?.remainingInQueue).toBe(0); // Should default to 0 when channel doesn't exist
     });
   });
 
@@ -184,14 +255,14 @@ describe('Utility Functions', () => {
     it('should create snapshot for empty queue', () => {
       const channels: ExtendedAudioQueueChannel[] = [
         {
-          queue: [],
           audioCompleteCallbacks: new Set(),
           audioErrorCallbacks: new Set(),
-          audioStartCallbacks: new Set(),
           audioPauseCallbacks: new Set(),
           audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
           isPaused: false,
           progressCallbacks: new Map(),
+          queue: [],
           queueChangeCallbacks: new Set(),
           volume: 1.0
         }
@@ -223,14 +294,18 @@ describe('Utility Functions', () => {
 
       const channels: ExtendedAudioQueueChannel[] = [
         {
-          queue: [mockAudio1 as any, mockAudio2 as any, mockAudio3 as any],
           audioCompleteCallbacks: new Set(),
           audioErrorCallbacks: new Set(),
-          audioStartCallbacks: new Set(),
           audioPauseCallbacks: new Set(),
           audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
           isPaused: false,
           progressCallbacks: new Map(),
+          queue: [
+            toHTMLAudioElement(mockAudio1),
+            toHTMLAudioElement(mockAudio2),
+            toHTMLAudioElement(mockAudio3)
+          ],
           queueChangeCallbacks: new Set(),
           volume: 1.0
         }
@@ -279,14 +354,14 @@ describe('Utility Functions', () => {
 
       const channels: ExtendedAudioQueueChannel[] = [
         {
-          queue: [mockAudio as any],
           audioCompleteCallbacks: new Set(),
           audioErrorCallbacks: new Set(),
-          audioStartCallbacks: new Set(),
           audioPauseCallbacks: new Set(),
           audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
           isPaused: false,
           progressCallbacks: new Map(),
+          queue: [toHTMLAudioElement(mockAudio)],
           queueChangeCallbacks: new Set(),
           volume: 1.0
         }
@@ -311,14 +386,14 @@ describe('Utility Functions', () => {
 
       const channels: ExtendedAudioQueueChannel[] = [
         {
-          queue: [mockAudio1 as any, mockAudio2 as any],
           audioCompleteCallbacks: new Set(),
           audioErrorCallbacks: new Set(),
-          audioStartCallbacks: new Set(),
           audioPauseCallbacks: new Set(),
           audioResumeCallbacks: new Set(),
+          audioStartCallbacks: new Set(),
           isPaused: false,
           progressCallbacks: new Map(),
+          queue: [toHTMLAudioElement(mockAudio1), toHTMLAudioElement(mockAudio2)],
           queueChangeCallbacks: new Set(),
           volume: 1.0
         }
@@ -395,6 +470,125 @@ describe('Utility Functions', () => {
     it('should handle very long hashes', () => {
       const longHash: string = cleanWebpackFilename('file.1234567890abcdef1234567890abcdef.mp3');
       expect(longHash).toBe('file.mp3');
+    });
+  });
+
+  describe('validateAudioUrl', () => {
+    it('should accept valid URLs', () => {
+      expect(validateAudioUrl('https://example.com/audio.mp3')).toBe(
+        'https://example.com/audio.mp3'
+      );
+      expect(validateAudioUrl('http://example.com/sound.wav')).toBe('http://example.com/sound.wav');
+      expect(validateAudioUrl('./sounds/local.mp3')).toBe('./sounds/local.mp3');
+      expect(validateAudioUrl('/absolute/path/audio.ogg')).toBe('/absolute/path/audio.ogg');
+      expect(validateAudioUrl('//cdn.example.com/audio.mp3')).toBe('//cdn.example.com/audio.mp3');
+    });
+
+    it('should trim whitespace', () => {
+      expect(validateAudioUrl('  https://example.com/audio.mp3  ')).toBe(
+        'https://example.com/audio.mp3'
+      );
+      expect(validateAudioUrl('\n\t./sounds/local.mp3\n\t')).toBe('./sounds/local.mp3');
+    });
+
+    it('should reject dangerous protocols', () => {
+      expect(() => validateAudioUrl('javascript:alert("XSS")')).toThrow('dangerous protocol');
+      expect(() => validateAudioUrl('data:text/html,<script>alert("XSS")</script>')).toThrow(
+        'dangerous protocol'
+      );
+      expect(() => validateAudioUrl('vbscript:msgbox("XSS")')).toThrow('dangerous protocol');
+      expect(() => validateAudioUrl('file:///etc/passwd')).toThrow('dangerous protocol');
+      expect(() => validateAudioUrl('about:blank')).toThrow('dangerous protocol');
+      expect(() => validateAudioUrl('chrome://settings')).toThrow('dangerous protocol');
+      expect(() => validateAudioUrl('chrome-extension://abc')).toThrow('dangerous protocol');
+    });
+
+    it('should reject path traversal attempts', () => {
+      expect(() => validateAudioUrl('../../../etc/passwd')).toThrow('path traversal');
+      expect(() => validateAudioUrl('audio/../../sensitive.txt')).toThrow('path traversal');
+      expect(() => validateAudioUrl('..\\..\\windows\\system32')).toThrow('path traversal');
+    });
+
+    it('should reject suspicious protocol-like patterns', () => {
+      expect(() => validateAudioUrl('custom:protocol')).toThrow('suspicious protocol-like pattern');
+      expect(() => validateAudioUrl('unknown://something')).toThrow(
+        'suspicious protocol-like pattern'
+      );
+    });
+
+    it('should allow Windows drive paths', () => {
+      expect(validateAudioUrl('C:/audio/file.mp3')).toBe('C:/audio/file.mp3');
+      expect(validateAudioUrl('D:\\sounds\\music.wav')).toBe('D:\\sounds\\music.wav');
+    });
+
+    it('should warn about missing audio extensions', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      validateAudioUrl('https://example.com/noextension');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('does not have a recognized audio file extension')
+      );
+
+      // Should not warn for URLs with query parameters
+      consoleSpy.mockClear();
+      validateAudioUrl('https://example.com/audio?file=song.mp3');
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      // Should not warn for recognized extensions
+      consoleSpy.mockClear();
+      validateAudioUrl('https://example.com/song.mp3');
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should reject invalid input types', () => {
+      expect(() => validateAudioUrl('')).toThrow('non-empty string');
+      expect(() => validateAudioUrl(null as unknown as string)).toThrow('non-empty string');
+      expect(() => validateAudioUrl(undefined as unknown as string)).toThrow('non-empty string');
+      expect(() => validateAudioUrl(123 as unknown as string)).toThrow('non-empty string');
+    });
+  });
+
+  describe('sanitizeForDisplay', () => {
+    it('should escape HTML special characters', () => {
+      expect(sanitizeForDisplay('<script>alert("XSS")</script>')).toBe(
+        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;'
+      );
+      expect(sanitizeForDisplay('<img src="x" onerror="alert(\'XSS\')">')).toBe(
+        '&lt;img src=&quot;x&quot; onerror=&quot;alert(&#x27;XSS&#x27;)&quot;&gt;'
+      );
+      expect(sanitizeForDisplay('Tom & Jerry')).toBe('Tom &amp; Jerry');
+    });
+
+    it('should handle normal text unchanged', () => {
+      expect(sanitizeForDisplay('normal-file.mp3')).toBe('normal-file.mp3');
+      expect(sanitizeForDisplay('song name with spaces.wav')).toBe('song name with spaces.wav');
+      expect(sanitizeForDisplay('123_test-file.ogg')).toBe('123_test-file.ogg');
+    });
+
+    it('should handle empty or invalid input', () => {
+      expect(sanitizeForDisplay('')).toBe('');
+      expect(sanitizeForDisplay(null as unknown as string)).toBe('');
+      expect(sanitizeForDisplay(undefined as unknown as string)).toBe('');
+      expect(sanitizeForDisplay(123 as unknown as string)).toBe('');
+    });
+  });
+
+  describe('extractFileName with sanitization', () => {
+    it('should sanitize extracted filenames', () => {
+      // Test with simple path injection - this will work correctly
+      const simpleXss = '/path/to/<img src=x>.mp3';
+      expect(extractFileName(simpleXss)).toBe('&lt;img src=x&gt;.mp3');
+
+      // Test with URL-encoded XSS attempt (more realistic)
+      const encodedXss = '/audio/%3Cscript%3Etest%3C%2Fscript%3E.wav';
+      expect(extractFileName(encodedXss)).toBe('&lt;script&gt;test&lt;&#x2F;script&gt;.wav');
+    });
+
+    it('should decode and sanitize URL-encoded filenames', () => {
+      const encodedUrl = 'https://example.com/song%20%26%20music.mp3';
+      expect(extractFileName(encodedUrl)).toBe('song &amp; music.mp3');
     });
   });
 });

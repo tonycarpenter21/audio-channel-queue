@@ -3,6 +3,11 @@
  */
 
 /**
+ * Maximum number of audio channels allowed to prevent memory exhaustion
+ */
+export const MAX_CHANNELS: number = 64;
+
+/**
  * Symbol used as a key for global (channel-wide) progress callbacks
  * This avoids the need for `null as any` type assertions
  */
@@ -39,17 +44,31 @@ export interface VolumeConfig {
 }
 
 /**
- * Audio file configuration for queueing
+ * Configuration options for queuing audio
  */
 export interface AudioQueueOptions {
-  /** Whether to add the audio to the front of the queue (defaults to false) */
+  /** Whether to add this audio to the front of the queue (after currently playing) */
   addToFront?: boolean;
   /** Whether the audio should loop when it finishes */
   loop?: boolean;
-  /** Whether to add the audio with priority (same as addToFront) */
+  /** Maximum number of items allowed in the queue (defaults to unlimited) */
+  maxQueueSize?: number;
+  /** @deprecated Use addToFront instead. Legacy support for priority queuing */
   priority?: boolean;
-  /** Volume level for this specific audio file (0-1, defaults to channel volume) */
+  /** Volume level for this specific audio (0-1) */
   volume?: number;
+}
+
+/**
+ * Global queue configuration options
+ */
+export interface QueueConfig {
+  /** Default maximum queue size across all channels (defaults to unlimited) */
+  defaultMaxQueueSize?: number;
+  /** Whether to drop oldest items when queue is full (defaults to false - reject new items) */
+  dropOldestWhenFull?: boolean;
+  /** Whether to show warnings when queue limits are reached (defaults to true) */
+  showQueueWarnings?: boolean;
 }
 
 /**
@@ -143,6 +162,18 @@ export interface QueueSnapshot {
 }
 
 /**
+ * Information about a queue manipulation operation result
+ */
+export interface QueueManipulationResult {
+  /** Error message if operation failed */
+  error?: string;
+  /** Whether the operation was successful */
+  success: boolean;
+  /** The queue snapshot after the operation (if successful) */
+  updatedQueue?: QueueSnapshot;
+}
+
+/**
  * Callback function type for audio progress updates
  * @param info Current audio information
  */
@@ -224,7 +255,7 @@ export interface ErrorRecoveryOptions {
 export type AudioErrorCallback = (errorInfo: AudioErrorInfo) => void;
 
 /**
- * Extended audio queue channel with error handling capabilities
+ * Extended audio channel with queue management and callback support
  */
 export interface ExtendedAudioQueueChannel {
   audioCompleteCallbacks: Set<AudioCompleteCallback>;
@@ -233,13 +264,16 @@ export interface ExtendedAudioQueueChannel {
   audioResumeCallbacks: Set<AudioResumeCallback>;
   audioStartCallbacks: Set<AudioStartCallback>;
   fadeState?: ChannelFadeState;
-  isPaused?: boolean;
+  isPaused: boolean;
+  /** Active operation lock to prevent race conditions */
+  isLocked?: boolean;
+  /** Maximum allowed queue size for this channel */
+  maxQueueSize?: number;
   progressCallbacks: Map<HTMLAudioElement | typeof GLOBAL_PROGRESS_KEY, Set<ProgressCallback>>;
   queue: HTMLAudioElement[];
   queueChangeCallbacks: Set<QueueChangeCallback>;
   retryConfig?: RetryConfig;
-  volume?: number;
-  volumeConfig?: VolumeConfig;
+  volume: number;
 }
 
 /**
@@ -259,6 +293,14 @@ export enum FadeType {
   Linear = 'linear',
   Gentle = 'gentle',
   Dramatic = 'dramatic'
+}
+
+/**
+ * Timer types for volume transitions to ensure proper cleanup
+ */
+export enum TimerType {
+  RequestAnimationFrame = 'raf',
+  Timeout = 'timeout'
 }
 
 /**
@@ -287,4 +329,4 @@ export interface ChannelFadeState {
   customDuration?: number;
   /** Whether the channel is currently transitioning (during any fade operation) to prevent capturing intermediate volumes during rapid pause/resume toggles */
   isTransitioning?: boolean;
-} 
+}

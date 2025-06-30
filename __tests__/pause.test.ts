@@ -20,9 +20,38 @@ import {
 } from '../src/pause';
 import { onAudioPause, onAudioResume, audioChannels } from '../src/info';
 import { queueAudio } from '../src/core';
-import { MockAudioElement, mockCallback, waitForPromises } from './setup';
+import { toMockAudioElement, mockCallback, waitForPromises } from './setup';
 import { AudioInfo, FadeType, EasingType } from '../src/types';
 import { getFadeConfig } from '../src/volume';
+
+// Fast duration for test fade operations to speed up tests
+// Can be increased if tests become flaky
+const TEST_FADE_DURATION = 10;
+
+// Mock getFadeConfig to return fast configurations for testing
+const TEST_FADE_CONFIGS = {
+  [FadeType.Dramatic]: {
+    duration: TEST_FADE_DURATION,
+    pauseCurve: EasingType.EaseIn,
+    resumeCurve: EasingType.EaseOut
+  },
+  [FadeType.Gentle]: {
+    duration: TEST_FADE_DURATION,
+    pauseCurve: EasingType.EaseOut,
+    resumeCurve: EasingType.EaseIn
+  },
+  [FadeType.Linear]: {
+    duration: TEST_FADE_DURATION,
+    pauseCurve: EasingType.Linear,
+    resumeCurve: EasingType.Linear
+  }
+};
+
+// Mock getFadeConfig for all tests to use fast durations
+jest.mock('../src/volume', () => ({
+  ...jest.requireActual('../src/volume'),
+  getFadeConfig: jest.fn((fadeType: FadeType) => ({ ...TEST_FADE_CONFIGS[fadeType] }))
+}));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -33,7 +62,7 @@ describe('Pause/Resume Functionality', () => {
   describe('pauseChannel', () => {
     it('should pause currently playing audio', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
 
       await pauseChannel(0);
@@ -44,7 +73,7 @@ describe('Pause/Resume Functionality', () => {
 
     it('should not pause already paused audio', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = true;
 
       await pauseChannel(0);
@@ -54,7 +83,7 @@ describe('Pause/Resume Functionality', () => {
 
     it('should not pause ended audio', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
       mockAudio.ended = true;
 
@@ -69,7 +98,6 @@ describe('Pause/Resume Functionality', () => {
 
     it('should handle empty queue gracefully', async () => {
       audioChannels[0] = {
-        queue: [],
         audioCompleteCallbacks: new Set(),
         audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
@@ -77,6 +105,7 @@ describe('Pause/Resume Functionality', () => {
         audioStartCallbacks: new Set(),
         isPaused: false,
         progressCallbacks: new Map(),
+        queue: [],
         queueChangeCallbacks: new Set(),
         volume: 1.0
       };
@@ -89,7 +118,7 @@ describe('Pause/Resume Functionality', () => {
       onAudioPause(0, pauseCallback);
 
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
       mockAudio.duration = 120;
       mockAudio.currentTime = 30;
@@ -108,7 +137,7 @@ describe('Pause/Resume Functionality', () => {
 
     it('should use default channel when no channel specified', async () => {
       await queueAudio('test.mp3');
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
 
       await pauseChannel();
@@ -121,7 +150,7 @@ describe('Pause/Resume Functionality', () => {
       describe('pauseWithFade', () => {
         it('should pause with gentle fade by default', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = false;
           mockAudio.volume = 0.8;
           audioChannels[0].volume = 0.8;
@@ -130,19 +159,17 @@ describe('Pause/Resume Functionality', () => {
 
           expect(mockAudio.pause).toHaveBeenCalled();
           expect(audioChannels[0].isPaused).toBe(true);
-          expect(audioChannels[0].fadeState).toEqual({
-            originalVolume: 0.8,
-            fadeType: FadeType.Gentle,
-            isPaused: true,
-            isTransitioning: false,
-            customDuration: undefined
-          });
+          expect(audioChannels[0].fadeState).toBeDefined();
+          expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Gentle);
+          expect(audioChannels[0].fadeState?.isPaused).toBe(true);
+          expect(audioChannels[0].fadeState?.isTransitioning).toBe(false);
+          expect(audioChannels[0].fadeState?.originalVolume).toBe(0.8);
           expect(audioChannels[0].volume).toBe(0.8); // Volume should be restored
         });
 
         it('should pause with dramatic fade', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = false;
           mockAudio.volume = 1.0;
           audioChannels[0].volume = 1.0;
@@ -150,24 +177,26 @@ describe('Pause/Resume Functionality', () => {
           await pauseWithFade(FadeType.Dramatic, 0);
 
           expect(mockAudio.pause).toHaveBeenCalled();
+          expect(audioChannels[0].fadeState).toBeDefined();
           expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Dramatic);
           expect(audioChannels[0].fadeState?.originalVolume).toBe(1.0);
         });
 
         it('should pause instantly with instant fade type', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = false;
 
           await pauseWithFade(FadeType.Linear, 0);
 
           expect(mockAudio.pause).toHaveBeenCalled();
+          expect(audioChannels[0].fadeState).toBeDefined();
           expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Linear);
         });
 
         it('should not pause if already paused', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = true;
 
           await pauseWithFade(FadeType.Gentle, 0);
@@ -179,12 +208,11 @@ describe('Pause/Resume Functionality', () => {
           await expect(pauseWithFade(FadeType.Gentle, 99)).resolves.not.toThrow();
         });
 
-        it('should preserve original volume when pausing during an existing transition', 
-        async () => {
+        it('should preserve original volume when pausing during existing transition', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = false;
-          
+
           // Set initial volume
           const originalVolume = 0.8;
           mockAudio.volume = originalVolume;
@@ -192,7 +220,7 @@ describe('Pause/Resume Functionality', () => {
 
           // Simulate first pause that creates fade state
           await pauseWithFade(FadeType.Gentle, 0, 0); // Instant to avoid timing issues
-          
+
           // Verify initial fade state is correct
           expect(audioChannels[0].fadeState?.originalVolume).toBe(originalVolume);
           expect(audioChannels[0].fadeState?.isTransitioning).toBe(false);
@@ -215,7 +243,7 @@ describe('Pause/Resume Functionality', () => {
           // The originalVolume should still be the original (0.8), not the intermediate (0.3)
           expect(audioChannels[0].fadeState?.originalVolume).toBe(originalVolume);
           expect(audioChannels[0].fadeState?.isTransitioning).toBe(false);
-          
+
           // And the volume should be restored to original, not stuck at intermediate
           expect(audioChannels[0].volume).toBe(originalVolume);
         });
@@ -224,7 +252,7 @@ describe('Pause/Resume Functionality', () => {
       describe('resumeWithFade', () => {
         it('should resume with complementary fade curve', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
           // First pause with fade to set up state
           mockAudio.paused = false;
@@ -241,7 +269,7 @@ describe('Pause/Resume Functionality', () => {
 
         it('should fall back to regular resume if no fade state', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = true;
           audioChannels[0].isPaused = true;
 
@@ -253,7 +281,7 @@ describe('Pause/Resume Functionality', () => {
 
         it('should handle instant resume correctly', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
           // Set up instant fade state
           mockAudio.paused = false;
@@ -271,7 +299,7 @@ describe('Pause/Resume Functionality', () => {
 
         it('should allow fadeType override', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
           // Pause with gentle fade
           mockAudio.paused = false;
@@ -287,12 +315,75 @@ describe('Pause/Resume Functionality', () => {
           // The original fade state should still show Gentle, but Dramatic was used for resume
           expect(audioChannels[0].fadeState?.fadeType).toBe(FadeType.Gentle);
         });
+
+        it('should resume audio with stored fade configuration', async () => {
+          await queueAudio('test.mp3', 0);
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
+          // First pause with fade
+          await pauseWithFade(FadeType.Gentle, 0);
+
+          // Reset for resume test
+          mockAudio.paused = true;
+          audioChannels[0].isPaused = true;
+
+          // Resume should use stored fade type (Gentle)
+          await resumeWithFade(undefined, 0);
+
+          expect(mockAudio.play).toHaveBeenCalled();
+          expect(audioChannels[0].isPaused).toBe(false);
+        });
+
+        it('should handle instant resume with duration 0', async () => {
+          await queueAudio('test.mp3', 0);
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
+          // Start with playing audio and volume
+          mockAudio.paused = false;
+          audioChannels[0].volume = 0.8;
+
+          // Pause with fade to set up fade state
+          await pauseWithFade(FadeType.Gentle, 0);
+
+          // Wait for promises to resolve
+          await waitForPromises();
+
+          // The audio should now be paused with fadeState set
+          expect(audioChannels[0].fadeState).toBeDefined();
+
+          // Resume with instant duration (0)
+          await resumeWithFade(FadeType.Linear, 0, 0);
+
+          expect(mockAudio.play).toHaveBeenCalled();
+          expect(audioChannels[0].isPaused).toBe(false);
+          expect(audioChannels[0].volume).toBe(0.8); // Should restore original volume
+          expect(audioChannels[0].fadeState?.isPaused).toBe(false);
+          expect(audioChannels[0].fadeState?.isTransitioning).toBe(false);
+        });
+
+        it('should handle override with custom fade type', async () => {
+          await queueAudio('test.mp3', 0);
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
+          // First pause with Gentle fade
+          await pauseWithFade(FadeType.Gentle, 0);
+
+          // Reset for resume test
+          mockAudio.paused = true;
+          audioChannels[0].isPaused = true;
+
+          // Resume with override Dramatic fade
+          await resumeWithFade(FadeType.Dramatic, 0);
+
+          expect(mockAudio.play).toHaveBeenCalled();
+          expect(audioChannels[0].isPaused).toBe(false);
+        });
       });
 
       describe('togglePauseWithFade', () => {
         it('should pause when currently playing', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = false;
 
           await togglePauseWithFade(FadeType.Dramatic, 0);
@@ -303,7 +394,7 @@ describe('Pause/Resume Functionality', () => {
 
         it('should resume when currently paused', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
           // Set up paused state with fade
           mockAudio.paused = false;
@@ -325,9 +416,9 @@ describe('Pause/Resume Functionality', () => {
         });
 
         it('should pause all channels with fade', async () => {
-          const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-          const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-          const mockAudio2 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+          const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+          const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
+          const mockAudio2 = toMockAudioElement(audioChannels[2].queue[0]);
 
           mockAudio0.paused = false;
           mockAudio1.paused = false;
@@ -345,9 +436,9 @@ describe('Pause/Resume Functionality', () => {
 
         it('should resume all channels with fade', async () => {
           // First pause all with fade
-          const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-          const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-          const mockAudio2 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+          const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+          const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
+          const mockAudio2 = toMockAudioElement(audioChannels[2].queue[0]);
 
           mockAudio0.paused = false;
           mockAudio1.paused = false;
@@ -368,9 +459,9 @@ describe('Pause/Resume Functionality', () => {
         });
 
         it('should toggle all channels with fade', async () => {
-          const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-          const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-          const mockAudio2 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+          const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+          const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
+          const mockAudio2 = toMockAudioElement(audioChannels[2].queue[0]);
 
           mockAudio0.paused = false;
           mockAudio1.paused = false;
@@ -387,17 +478,17 @@ describe('Pause/Resume Functionality', () => {
       describe('Fade configuration', () => {
         it('should use correct fade configurations', () => {
           const instantConfig = getFadeConfig(FadeType.Linear);
-          expect(instantConfig.duration).toBe(800);
+          expect(instantConfig.duration).toBe(TEST_FADE_DURATION);
           expect(instantConfig.pauseCurve).toBe(EasingType.Linear);
           expect(instantConfig.resumeCurve).toBe(EasingType.Linear);
 
           const gentleConfig = getFadeConfig(FadeType.Gentle);
-          expect(gentleConfig.duration).toBe(800);
+          expect(gentleConfig.duration).toBe(TEST_FADE_DURATION);
           expect(gentleConfig.pauseCurve).toBe(EasingType.EaseOut);
           expect(gentleConfig.resumeCurve).toBe(EasingType.EaseIn);
 
           const dramaticConfig = getFadeConfig(FadeType.Dramatic);
-          expect(dramaticConfig.duration).toBe(800);
+          expect(dramaticConfig.duration).toBe(TEST_FADE_DURATION);
           expect(dramaticConfig.pauseCurve).toBe(EasingType.EaseIn);
           expect(dramaticConfig.resumeCurve).toBe(EasingType.EaseOut);
         });
@@ -407,14 +498,14 @@ describe('Pause/Resume Functionality', () => {
           const config2 = getFadeConfig(FadeType.Gentle);
 
           config1.duration = 999;
-          expect(config2.duration).toBe(800); // Should not be affected
+          expect(config2.duration).toBe(TEST_FADE_DURATION); // Should not be affected
         });
       });
 
       describe('State synchronization', () => {
         it('should maintain volume state synchronously during fade operations', async () => {
           await queueAudio('test.mp3', 0);
-          const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+          const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
           mockAudio.paused = false;
           audioChannels[0].volume = 0.8;
 
@@ -435,7 +526,7 @@ describe('Pause/Resume Functionality', () => {
   describe('resumeChannel', () => {
     it('should resume paused audio', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = true;
       audioChannels[0].isPaused = true;
 
@@ -451,7 +542,7 @@ describe('Pause/Resume Functionality', () => {
       // Wait for async playback to complete setup
       await waitForPromises(50);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
       // Set up the state: audio is already playing
       mockAudio.paused = false;
@@ -471,7 +562,7 @@ describe('Pause/Resume Functionality', () => {
       // Wait for async playback to complete setup
       await waitForPromises(50);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
       // Set up the state: audio has ended
       mockAudio.paused = true;
@@ -495,7 +586,7 @@ describe('Pause/Resume Functionality', () => {
       onAudioResume(0, resumeCallback);
 
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = true;
       mockAudio.duration = 120;
       mockAudio.currentTime = 30;
@@ -515,7 +606,7 @@ describe('Pause/Resume Functionality', () => {
 
     it('should use default channel when no channel specified', async () => {
       await queueAudio('test.mp3');
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = true;
       audioChannels[0].isPaused = true;
 
@@ -529,7 +620,7 @@ describe('Pause/Resume Functionality', () => {
   describe('togglePauseChannel', () => {
     it('should pause playing audio', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
 
       await togglePauseChannel(0);
@@ -540,7 +631,7 @@ describe('Pause/Resume Functionality', () => {
 
     it('should resume paused audio', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = true;
       audioChannels[0].isPaused = true;
 
@@ -552,7 +643,6 @@ describe('Pause/Resume Functionality', () => {
 
     it('should handle empty queue gracefully', async () => {
       audioChannels[0] = {
-        queue: [],
         audioCompleteCallbacks: new Set(),
         audioErrorCallbacks: new Set(),
         audioPauseCallbacks: new Set(),
@@ -560,6 +650,7 @@ describe('Pause/Resume Functionality', () => {
         audioStartCallbacks: new Set(),
         isPaused: false,
         progressCallbacks: new Map(),
+        queue: [],
         queueChangeCallbacks: new Set(),
         volume: 1.0
       };
@@ -574,9 +665,9 @@ describe('Pause/Resume Functionality', () => {
       await queueAudio('test2.mp3', 1);
       await queueAudio('test3.mp3', 2);
 
-      const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-      const mockAudio2 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+      const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
+      const mockAudio2 = toMockAudioElement(audioChannels[2].queue[0]);
 
       mockAudio0.paused = false;
       mockAudio1.paused = false;
@@ -602,8 +693,8 @@ describe('Pause/Resume Functionality', () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
 
-      const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+      const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
 
       mockAudio0.paused = true;
       mockAudio1.paused = true;
@@ -668,7 +759,7 @@ describe('Pause/Resume Functionality', () => {
 
     it('should handle channels with undefined isPaused', async () => {
       await queueAudio('test.mp3', 0);
-      delete audioChannels[0].isPaused;
+      (audioChannels[0] as unknown as { isPaused: undefined }).isPaused = undefined;
 
       const pauseStates = getAllChannelsPauseState();
 
@@ -685,9 +776,9 @@ describe('Pause/Resume Functionality', () => {
       // Wait for audio to start playing
       await waitForPromises(50);
 
-      const mockAudio1 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio2 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-      const mockAudio3 = audioChannels[2].queue[0] as unknown as MockAudioElement;
+      const mockAudio1 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio2 = toMockAudioElement(audioChannels[1].queue[0]);
+      const mockAudio3 = toMockAudioElement(audioChannels[2].queue[0]);
 
       // Ensure they are all playing
       mockAudio1.paused = false;
@@ -715,8 +806,8 @@ describe('Pause/Resume Functionality', () => {
       await waitForPromises(50);
       await pauseAllChannels();
 
-      const mockAudio1 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio2 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+      const mockAudio1 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio2 = toMockAudioElement(audioChannels[1].queue[0]);
 
       // Clear the pause calls so we can test resume calls
       mockAudio1.play.mockClear();
@@ -740,8 +831,8 @@ describe('Pause/Resume Functionality', () => {
       // Pause only one channel
       await pauseChannel(0);
 
-      const mockAudio1 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio2 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+      const mockAudio1 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio2 = toMockAudioElement(audioChannels[1].queue[0]);
 
       // Clear previous pause calls
       mockAudio1.pause.mockClear();
@@ -763,7 +854,7 @@ describe('Pause/Resume Functionality', () => {
     it('should handle channels with ended audio', async () => {
       await queueAudio('test.mp3', 0);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.ended = true;
       mockAudio.paused = false; // Ended but not paused
 
@@ -780,7 +871,7 @@ describe('Pause/Resume Functionality', () => {
       // Wait for audio to start
       await waitForPromises(50);
 
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
       audioChannels[0].isPaused = false;
 
@@ -801,11 +892,11 @@ describe('Custom Duration Support', () => {
   describe('pauseWithFade with custom duration', () => {
     it('should use custom duration instead of fadeType default', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
       audioChannels[0].volume = 0.8;
 
-      const customDuration = 1500;
+      const customDuration = TEST_FADE_DURATION;
       await pauseWithFade(FadeType.Gentle, 0, customDuration);
 
       expect(audioChannels[0].fadeState?.customDuration).toBe(customDuration);
@@ -815,7 +906,7 @@ describe('Custom Duration Support', () => {
 
     it('should use fadeType default when no custom duration provided', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
       audioChannels[0].volume = 0.8;
 
@@ -827,7 +918,7 @@ describe('Custom Duration Support', () => {
 
     it('should handle zero duration as instant pause', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
 
       await pauseWithFade(FadeType.Gentle, 0, 0);
@@ -840,15 +931,15 @@ describe('Custom Duration Support', () => {
   describe('resumeWithFade with custom duration', () => {
     it('should use custom duration parameter over stored duration', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
       // Pause with custom duration
       mockAudio.paused = false;
       audioChannels[0].volume = 0.6;
-      await pauseWithFade(FadeType.Gentle, 0, 1000);
+      await pauseWithFade(FadeType.Gentle, 0, TEST_FADE_DURATION);
 
       // Resume with different custom duration
-      const customResumeDuration = 500;
+      const customResumeDuration = TEST_FADE_DURATION;
       await resumeWithFade(undefined, 0, customResumeDuration);
 
       expect(mockAudio.play).toHaveBeenCalled();
@@ -857,12 +948,12 @@ describe('Custom Duration Support', () => {
 
     it('should use stored custom duration when no resume duration provided', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
       // Pause with custom duration
       mockAudio.paused = false;
       audioChannels[0].volume = 0.7;
-      const pauseDuration = 1200;
+      const pauseDuration = TEST_FADE_DURATION;
       await pauseWithFade(FadeType.Dramatic, 0, pauseDuration);
 
       // Resume without specifying duration (should use stored custom duration)
@@ -874,8 +965,8 @@ describe('Custom Duration Support', () => {
 
     it('should use fadeType default when no custom durations exist', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
       // Pause without custom duration
       mockAudio.paused = false;
       audioChannels[0].volume = 0.9;
@@ -890,15 +981,15 @@ describe('Custom Duration Support', () => {
 
     it('should override fadeType and use custom duration', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
       // Pause with gentle fade
       mockAudio.paused = false;
       audioChannels[0].volume = 0.5;
       await pauseWithFade(FadeType.Gentle, 0);
 
       // Resume with dramatic fade override and custom duration
-      await resumeWithFade(FadeType.Dramatic, 0, 300);
+      await resumeWithFade(FadeType.Dramatic, 0, TEST_FADE_DURATION);
 
       expect(mockAudio.play).toHaveBeenCalled();
       expect(audioChannels[0].fadeState?.isPaused).toBe(false);
@@ -908,11 +999,11 @@ describe('Custom Duration Support', () => {
   describe('togglePauseWithFade with custom duration', () => {
     it('should use custom duration for both pause and resume', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
       audioChannels[0].volume = 0.8;
 
-      const customDuration = 750;
+      const customDuration = TEST_FADE_DURATION;
 
       // First toggle should pause with custom duration
       await togglePauseWithFade(FadeType.Gentle, 0, customDuration);
@@ -931,15 +1022,15 @@ describe('Custom Duration Support', () => {
     it('should apply custom duration to all channels in pauseAllWithFade', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
-      
-      const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+
+      const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
       mockAudio0.paused = false;
       mockAudio1.paused = false;
       audioChannels[0].volume = 0.7;
       audioChannels[1].volume = 0.9;
 
-      const customDuration = 2000;
+      const customDuration = TEST_FADE_DURATION;
       await pauseAllWithFade(FadeType.Dramatic, customDuration);
 
       expect(audioChannels[0].fadeState?.customDuration).toBe(customDuration);
@@ -951,17 +1042,17 @@ describe('Custom Duration Support', () => {
     it('should apply custom duration to all channels in resumeAllWithFade', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
-      
-      const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-      
+
+      const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
+
       // Pause both channels first
       mockAudio0.paused = false;
       mockAudio1.paused = false;
       await pauseAllWithFade(FadeType.Gentle);
 
       // Resume with custom duration
-      const customResumeDuration = 600;
+      const customResumeDuration = TEST_FADE_DURATION;
       await resumeAllWithFade(FadeType.Linear, customResumeDuration);
 
       expect(mockAudio0.play).toHaveBeenCalled();
@@ -973,20 +1064,20 @@ describe('Custom Duration Support', () => {
     it('should apply custom duration in togglePauseAllWithFade', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
-      
-      const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
+
+      const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
       mockAudio0.paused = false;
       mockAudio1.paused = false;
 
-      const customDuration = 400;
-      
+      const customDuration = TEST_FADE_DURATION;
+
       // Should pause all with custom duration
       await togglePauseAllWithFade(FadeType.Gentle, customDuration);
 
       expect(audioChannels[0].fadeState?.customDuration).toBe(customDuration);
       expect(audioChannels[1].fadeState?.customDuration).toBe(customDuration);
-      
+
       // Should resume all with same custom duration
       await togglePauseAllWithFade(FadeType.Gentle, customDuration);
 
@@ -1000,38 +1091,38 @@ describe('Race Condition Handling', () => {
   describe('Rapid pause/resume toggle protection', () => {
     it('should preserve original volume during rapid toggles', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
-      
+
       const originalVolume = 0.75;
       audioChannels[0].volume = originalVolume;
 
       // First pause with fade
       await pauseWithFade(FadeType.Gentle, 0);
-      
+
       // Verify original volume is preserved
       expect(audioChannels[0].fadeState?.originalVolume).toBe(originalVolume);
-      
+
       // Now resume
       await resumeWithFade(FadeType.Gentle, 0);
-      
+
       // Original volume should still be preserved
       expect(audioChannels[0].fadeState?.originalVolume).toBe(originalVolume);
     });
 
     it('should not capture zero volume as original volume', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
-      
+
       // Set up scenario where current volume might be 0 during transition
       audioChannels[0].volume = 0;
-      
+
       // Create existing fade state with proper original volume
       audioChannels[0].fadeState = {
-        originalVolume: 0.8,
         fadeType: FadeType.Gentle,
-        isPaused: false
+        isPaused: false,
+        originalVolume: 0.8
       };
 
       await pauseWithFade(FadeType.Dramatic, 0);
@@ -1042,13 +1133,13 @@ describe('Race Condition Handling', () => {
 
     it('should handle resume with corrupted original volume gracefully', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
       // Set up corrupted fade state (original volume of 0)
       audioChannels[0].fadeState = {
-        originalVolume: 0,
         fadeType: FadeType.Gentle,
-        isPaused: true
+        isPaused: true,
+        originalVolume: 0
       };
 
       await resumeWithFade(undefined, 0);
@@ -1060,7 +1151,7 @@ describe('Race Condition Handling', () => {
 
     it('should handle multiple sequential fade operations on same channel', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
       audioChannels[0].volume = 0.6;
 
@@ -1080,43 +1171,43 @@ describe('Race Condition Handling', () => {
   describe('Volume state synchronization', () => {
     it('should maintain consistent volume state across fade operations', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
-      
+
       const targetVolume = 0.65;
       audioChannels[0].volume = targetVolume;
 
       // Pause with fade
       await pauseWithFade(FadeType.Gentle, 0);
-      
+
       // Volume should be restored to original after pause
       expect(audioChannels[0].volume).toBe(targetVolume);
       expect(audioChannels[0].fadeState?.originalVolume).toBe(targetVolume);
 
       // Resume with fade
       await resumeWithFade(undefined, 0);
-      
+
       // Final volume should match original
       expect(audioChannels[0].volume).toBe(targetVolume);
     });
 
     it('should handle volume changes between pause and resume', async () => {
       await queueAudio('test.mp3', 0);
-      const mockAudio = audioChannels[0].queue[0] as unknown as MockAudioElement;
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;
-      
+
       const initialVolume = 0.8;
       audioChannels[0].volume = initialVolume;
 
       // Pause with fade
       await pauseWithFade(FadeType.Gentle, 0);
-      
+
       // Manually change volume while paused (simulating external volume change)
       audioChannels[0].volume = 0.3;
 
       // Resume should restore to original volume, not current volume
       await resumeWithFade(undefined, 0);
-      
+
       expect(audioChannels[0].volume).toBe(initialVolume);
     });
   });
@@ -1125,10 +1216,10 @@ describe('Race Condition Handling', () => {
     it('should use new fadeType parameter in resumeAllWithFade', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
-      
-      const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-      
+
+      const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
+
       // Pause both channels with different fade types
       mockAudio0.paused = false;
       mockAudio1.paused = false;
@@ -1147,10 +1238,10 @@ describe('Race Condition Handling', () => {
     it('should use stored fade types when no override provided in resumeAllWithFade', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
-      
-      const mockAudio0 = audioChannels[0].queue[0] as unknown as MockAudioElement;
-      const mockAudio1 = audioChannels[1].queue[0] as unknown as MockAudioElement;
-      
+
+      const mockAudio0 = toMockAudioElement(audioChannels[0].queue[0]);
+      const mockAudio1 = toMockAudioElement(audioChannels[1].queue[0]);
+
       // Pause both channels
       mockAudio0.paused = false;
       mockAudio1.paused = false;

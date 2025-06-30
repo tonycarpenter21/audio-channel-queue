@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0] - 2025-01-16
+
+### Added - Advanced Queue Manipulation System 🎵
+- **🎛️ Queue Item Management**: Direct control over individual queue items
+  - `removeQueuedItem(queueSlotNumber, channelNumber?)` - Remove specific items from queue by index
+  - `reorderQueue(currentSlot, newSlot, channelNumber?)` - Move items to different positions in queue
+  - `swapQueueItems(slotA, slotB, channelNumber?)` - Swap positions of two queue items
+  - **Safety protections**: Cannot manipulate currently playing audio (index 0)
+
+- **🎪 Smart Queue Operations**: Advanced queue management utilities  
+  - `clearQueueAfterCurrent(channelNumber?)` - Clear everything after current audio
+  - `getQueueItemInfo(queueSlotNumber, channelNumber?)` - Get detailed info about specific queue items
+  - `getQueueLength(channelNumber?)` - Simple queue size check
+
+- **📋 Enhanced Type System**: New interfaces for queue manipulation
+  - `QueueManipulationResult` interface with success status, error messages, and updated queue snapshots
+
+### Changed - Code Quality & Configuration Improvements
+- **🧹 ESLint Configuration Enhancement**: Unified and DRY configuration system
+  - Test files now inherit all source code quality standards
+  - Only 2 specific relaxations for tests: `any` types for mocking and `console` for debugging
+
+### Changed - API Consistency Improvements
+  - `offAudioProgress` Now defaults to channel 0 when no parameter provided and existing code continues to work without changes
+  - `getQueueSnapshot` Now defaults to channel 0 when no parameter provided and existing code continues to work without changes
+
+### Improved - Test Suite & Code Coverage
+- **🧪 Test Code Quality**: Eliminated `any` types from test files
+  - Increased test coverage
+  - Proper TypeScript typing for all mocks and test utilities
+  - Created `toHTMLAudioElement` helper for clean type conversions
+  - All test files now pass strict TypeScript and ESLint checks
+
+### Technical Improvements
+- **Excluded index.ts from coverage** reporting (barrel export file)
+- **Improved mock typing** with proper TypeScript interfaces
+- **Enhanced test reliability** with better async handling patterns
+
+### Fixed
+- **Critical Volume Ducking Bug**: Fixed issue where `channel.volume` was incorrectly modified during ducking operations
+  - Channel volumes now properly maintain their desired levels during ducking/restoration
+  - Only audio element volumes are modified during ducking, preserving user-set channel volumes
+- **Priority Channel Ducking**: Fixed volume ducking logic for priority channels to preserve channel state consistency
+
 ## [1.9.0] - 2025-01-16
 
 ### Changed - TypeScript Code Quality & Standards Implementation 🎯

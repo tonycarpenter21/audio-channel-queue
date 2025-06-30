@@ -77,7 +77,7 @@ const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, func
         // First fade or no transition in progress, capture current volume
         // But ensure we don't capture a volume of 0 during a transition
         const currentVolume = getChannelVolumeSync(channelNumber);
-        originalVolume = currentVolume > 0 ? currentVolume : (_c = (_b = channel.fadeState) === null || _b === void 0 ? void 0 : _b.originalVolume) !== null && _c !== void 0 ? _c : 1.0;
+        originalVolume = currentVolume > 0 ? currentVolume : ((_c = (_b = channel.fadeState) === null || _b === void 0 ? void 0 : _b.originalVolume) !== null && _c !== void 0 ? _c : 1.0);
     }
     // Store fade state for resumeWithFade to use (including custom duration)
     channel.fadeState = {

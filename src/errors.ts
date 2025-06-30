@@ -7,7 +7,8 @@ import {
   AudioErrorCallback,
   RetryConfig,
   ErrorRecoveryOptions,
-  ExtendedAudioQueueChannel
+  ExtendedAudioQueueChannel,
+  MAX_CHANNELS
 } from './types';
 import { audioChannels } from './info';
 import { extractFileName } from './utils';
@@ -37,6 +38,7 @@ const loadTimeouts: WeakMap<HTMLAudioElement, number> = new WeakMap();
  * Subscribes to audio error events for a specific channel
  * @param channelNumber - The channel number to listen to (defaults to 0)
  * @param callback - Function to call when an audio error occurs
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioError(0, (errorInfo) => {
@@ -46,7 +48,17 @@ const loadTimeouts: WeakMap<HTMLAudioElement, number> = new WeakMap();
  * ```
  */
 export const onAudioError = (channelNumber: number = 0, callback: AudioErrorCallback): void => {
-  // Ensure channel exists
+  // Validate channel number limits BEFORE creating any channels
+  if (channelNumber < 0) {
+    throw new Error('Channel number must be non-negative');
+  }
+  if (channelNumber >= MAX_CHANNELS) {
+    throw new Error(
+      `Channel number ${channelNumber} exceeds maximum allowed channels (${MAX_CHANNELS})`
+    );
+  }
+
+  // Ensure channel exists (now safe because we validated the limit above)
   while (audioChannels.length <= channelNumber) {
     audioChannels.push({
       audioCompleteCallbacks: new Set(),

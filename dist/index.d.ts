@@ -3,12 +3,13 @@
  * Exports all public functions and types for audio queue management, pause/resume controls,
  * volume management with ducking, progress tracking, and comprehensive event system
  */
-export { queueAudio, queueAudioPriority, stopCurrentAudioInChannel, stopAllAudioInChannel, stopAllAudio, playAudioQueue } from './core';
+export { queueAudio, queueAudioPriority, stopCurrentAudioInChannel, stopAllAudioInChannel, stopAllAudio, playAudioQueue, destroyChannel, destroyAllChannels, setQueueConfig, getQueueConfig, setChannelQueueLimit } from './core';
+export { clearQueueAfterCurrent, getQueueItemInfo, getQueueLength, removeQueuedItem, reorderQueue, swapQueueItems } from './queue-manipulation';
 export { getErrorRecovery, getRetryConfig, offAudioError, onAudioError, retryFailedAudio, setErrorRecovery, setRetryConfig } from './errors';
 export { getAllChannelsPauseState, isChannelPaused, pauseAllChannels, pauseAllWithFade, pauseChannel, pauseWithFade, resumeAllChannels, resumeAllWithFade, resumeChannel, resumeWithFade, togglePauseAllChannels, togglePauseAllWithFade, togglePauseChannel, togglePauseWithFade } from './pause';
-export { clearVolumeDucking, fadeVolume, getAllChannelsVolume, getChannelVolume, getFadeConfig, setAllChannelsVolume, setChannelVolume, setVolumeDucking, transitionVolume } from './volume';
+export { clearVolumeDucking, fadeVolume, getAllChannelsVolume, getChannelVolume, getFadeConfig, setAllChannelsVolume, setChannelVolume, setVolumeDucking, transitionVolume, cancelVolumeTransition, cancelAllVolumeTransitions } from './volume';
 export { getAllChannelsInfo, getCurrentAudioInfo, getQueueSnapshot, offAudioPause, offAudioProgress, offAudioResume, offQueueChange, onAudioComplete, onAudioPause, onAudioProgress, onAudioResume, onAudioStart, onQueueChange } from './info';
 export { audioChannels } from './info';
-export { cleanWebpackFilename, createQueueSnapshot, extractFileName, getAudioInfoFromElement } from './utils';
-export type { AudioCompleteCallback, AudioCompleteInfo, AudioErrorCallback, AudioErrorInfo, AudioInfo, AudioPauseCallback, AudioQueueOptions, AudioResumeCallback, AudioStartCallback, AudioStartInfo, ChannelFadeState, ErrorRecoveryOptions, ExtendedAudioQueueChannel, FadeConfig, ProgressCallback, QueueChangeCallback, QueueItem, QueueSnapshot, RetryConfig, VolumeConfig } from './types';
-export { EasingType, FadeType, GLOBAL_PROGRESS_KEY } from './types';
+export { cleanWebpackFilename, createQueueSnapshot, extractFileName, getAudioInfoFromElement, sanitizeForDisplay, validateAudioUrl } from './utils';
+export type { AudioCompleteCallback, AudioCompleteInfo, AudioErrorCallback, AudioErrorInfo, AudioInfo, AudioPauseCallback, AudioQueueOptions, AudioResumeCallback, AudioStartCallback, AudioStartInfo, ChannelFadeState, ErrorRecoveryOptions, ExtendedAudioQueueChannel, FadeConfig, ProgressCallback, QueueChangeCallback, QueueItem, QueueManipulationResult, QueueSnapshot, RetryConfig, VolumeConfig, QueueConfig } from './types';
+export { EasingType, FadeType, MAX_CHANNELS, TimerType, GLOBAL_PROGRESS_KEY } from './types';

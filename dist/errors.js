@@ -36,6 +36,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createProtectedAudioElement = exports.handleAudioError = exports.setupAudioErrorHandling = exports.categorizeError = exports.emitAudioError = exports.retryFailedAudio = exports.getErrorRecovery = exports.setErrorRecovery = exports.getRetryConfig = exports.setRetryConfig = exports.offAudioError = exports.onAudioError = void 0;
+const types_1 = require("./types");
 const info_1 = require("./info");
 const utils_1 = require("./utils");
 let globalRetryConfig = {
@@ -59,6 +60,7 @@ const loadTimeouts = new WeakMap();
  * Subscribes to audio error events for a specific channel
  * @param channelNumber - The channel number to listen to (defaults to 0)
  * @param callback - Function to call when an audio error occurs
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioError(0, (errorInfo) => {
@@ -68,7 +70,14 @@ const loadTimeouts = new WeakMap();
  * ```
  */
 const onAudioError = (channelNumber = 0, callback) => {
-    // Ensure channel exists
+    // Validate channel number limits BEFORE creating any channels
+    if (channelNumber < 0) {
+        throw new Error('Channel number must be non-negative');
+    }
+    if (channelNumber >= types_1.MAX_CHANNELS) {
+        throw new Error(`Channel number ${channelNumber} exceeds maximum allowed channels (${types_1.MAX_CHANNELS})`);
+    }
+    // Ensure channel exists (now safe because we validated the limit above)
     while (info_1.audioChannels.length <= channelNumber) {
         info_1.audioChannels.push({
             audioCompleteCallbacks: new Set(),

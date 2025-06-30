@@ -32,6 +32,7 @@ export declare const transitionVolume: (channelNumber: number, targetVolume: num
  * @param volume - Volume level (0-1)
  * @param transitionDuration - Optional transition duration in milliseconds
  * @param easing - Optional easing function
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * setChannelVolume(0, 0.5); // Set channel 0 to 50%
@@ -76,6 +77,7 @@ export declare const setAllChannelsVolume: (volume: number) => Promise<void>;
  * Configures volume ducking for channels. When the priority channel plays audio,
  * all other channels will be automatically reduced to the ducking volume level
  * @param config - Volume ducking configuration
+ * @throws Error if the priority channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * // When channel 1 plays, reduce all other channels to 20% volume
@@ -116,8 +118,19 @@ export declare const applyVolumeDucking: (activeChannelNumber: number) => Promis
  */
 export declare const fadeVolume: (channelNumber: number, targetVolume: number, duration?: number, easing?: EasingType) => Promise<void>;
 /**
- * Restores normal volume levels when priority channel stops with smooth transitions
+ * Restores normal volume levels when priority channel queue becomes empty
  * @param stoppedChannelNumber - The channel that just stopped playing
  * @internal
  */
 export declare const restoreVolumeLevels: (stoppedChannelNumber: number) => Promise<void>;
+/**
+ * Cancels any active volume transition for a specific channel
+ * @param channelNumber - The channel number to cancel transitions for
+ * @internal
+ */
+export declare const cancelVolumeTransition: (channelNumber: number) => void;
+/**
+ * Cancels all active volume transitions across all channels
+ * @internal
+ */
+export declare const cancelAllVolumeTransitions: () => void;

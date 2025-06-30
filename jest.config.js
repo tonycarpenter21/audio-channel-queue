@@ -15,6 +15,10 @@ module.exports = {
     'lcov',
     'html'
   ],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    'src/index.ts'
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
   }

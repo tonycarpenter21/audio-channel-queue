@@ -5,6 +5,9 @@ import { AudioInfo, QueueSnapshot, ProgressCallback, QueueChangeCallback, AudioS
 /**
  * Global array to store audio channels with their queues and callback management
  * Each channel maintains its own audio queue and event callback sets
+ *
+ * Note: While you can inspect this array for debugging, direct modification is discouraged.
+ * Use the provided API functions for safe channel management.
  */
 export declare const audioChannels: ExtendedAudioQueueChannel[];
 /**
@@ -37,22 +40,24 @@ export declare const getCurrentAudioInfo: (channelNumber?: number) => AudioInfo 
 export declare const getAllChannelsInfo: () => (AudioInfo | null)[];
 /**
  * Gets a complete snapshot of the queue state for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @returns QueueSnapshot object or null if channel doesn't exist
  * @example
  * ```typescript
- * const snapshot = getQueueSnapshot(0);
+ * const snapshot = getQueueSnapshot();
  * if (snapshot) {
  *   console.log(`Queue has ${snapshot.totalItems} items`);
  *   console.log(`Currently playing: ${snapshot.items[0]?.fileName}`);
  * }
+ * const channelSnapshot = getQueueSnapshot(2);
  * ```
  */
-export declare const getQueueSnapshot: (channelNumber: number) => QueueSnapshot | null;
+export declare const getQueueSnapshot: (channelNumber?: number) => QueueSnapshot | null;
 /**
  * Subscribes to real-time progress updates for a specific channel
  * @param channelNumber - The channel number
  * @param callback - Function to call with audio info updates
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioProgress(0, (info) => {
@@ -64,17 +69,19 @@ export declare const getQueueSnapshot: (channelNumber: number) => QueueSnapshot 
 export declare const onAudioProgress: (channelNumber: number, callback: ProgressCallback) => void;
 /**
  * Removes progress listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioProgress(0); // Stop receiving progress updates for channel 0
+ * offAudioProgress();
+ * offAudioProgress(1); // Stop receiving progress updates for channel 1
  * ```
  */
-export declare const offAudioProgress: (channelNumber: number) => void;
+export declare function offAudioProgress(channelNumber?: number): void;
 /**
  * Subscribes to queue change events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when queue changes
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onQueueChange(0, (snapshot) => {
@@ -97,6 +104,7 @@ export declare const offQueueChange: (channelNumber: number) => void;
  * Subscribes to audio start events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio starts playing
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioStart(0, (info) => {
@@ -110,6 +118,7 @@ export declare const onAudioStart: (channelNumber: number, callback: AudioStartC
  * Subscribes to audio complete events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio completes
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioComplete(0, (info) => {
@@ -125,6 +134,7 @@ export declare const onAudioComplete: (channelNumber: number, callback: AudioCom
  * Subscribes to audio pause events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio is paused
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioPause(0, (channelNumber, info) => {
@@ -138,6 +148,7 @@ export declare const onAudioPause: (channelNumber: number, callback: AudioPauseC
  * Subscribes to audio resume events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio is resumed
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioResume(0, (channelNumber, info) => {

@@ -3,6 +3,31 @@
  */
 import { AudioInfo, QueueSnapshot, ExtendedAudioQueueChannel } from './types';
 /**
+ * Validates an audio URL for security and correctness
+ * @param url - The URL to validate
+ * @returns The validated URL
+ * @throws Error if the URL is invalid or potentially malicious
+ * @example
+ * ```typescript
+ * validateAudioUrl('https://example.com/audio.mp3'); // Valid
+ * validateAudioUrl('./sounds/local.wav'); // Valid relative path
+ * validateAudioUrl('javascript:alert("XSS")'); // Throws error
+ * validateAudioUrl('data:text/html,<script>alert("XSS")</script>'); // Throws error
+ * ```
+ */
+export declare const validateAudioUrl: (url: string) => string;
+/**
+ * Sanitizes a string for safe display in HTML contexts
+ * @param text - The text to sanitize
+ * @returns The sanitized text safe for display
+ * @example
+ * ```typescript
+ * sanitizeForDisplay('<script>alert("XSS")</script>'); // Returns: '&lt;script&gt;alert("XSS")&lt;/script&gt;'
+ * sanitizeForDisplay('normal-file.mp3'); // Returns: 'normal-file.mp3'
+ * ```
+ */
+export declare const sanitizeForDisplay: (text: string) => string;
+/**
  * Extracts the filename from a URL string
  * @param url - The URL to extract the filename from
  * @returns The extracted filename or 'unknown' if extraction fails

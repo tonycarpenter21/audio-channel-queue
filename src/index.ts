@@ -11,8 +11,23 @@ export {
   stopCurrentAudioInChannel,
   stopAllAudioInChannel,
   stopAllAudio,
-  playAudioQueue
+  playAudioQueue,
+  destroyChannel,
+  destroyAllChannels,
+  setQueueConfig,
+  getQueueConfig,
+  setChannelQueueLimit
 } from './core';
+
+// Queue manipulation functions
+export {
+  clearQueueAfterCurrent,
+  getQueueItemInfo,
+  getQueueLength,
+  removeQueuedItem,
+  reorderQueue,
+  swapQueueItems
+} from './queue-manipulation';
 
 // Error handling and recovery functions
 export {
@@ -53,7 +68,9 @@ export {
   setAllChannelsVolume,
   setChannelVolume,
   setVolumeDucking,
-  transitionVolume
+  transitionVolume,
+  cancelVolumeTransition,
+  cancelAllVolumeTransitions
 } from './volume';
 
 // Audio information and progress tracking functions
@@ -81,7 +98,9 @@ export {
   cleanWebpackFilename,
   createQueueSnapshot,
   extractFileName,
-  getAudioInfoFromElement
+  getAudioInfoFromElement,
+  sanitizeForDisplay,
+  validateAudioUrl
 } from './utils';
 
 // TypeScript type definitions and interfaces
@@ -103,10 +122,12 @@ export type {
   ProgressCallback,
   QueueChangeCallback,
   QueueItem,
+  QueueManipulationResult,
   QueueSnapshot,
   RetryConfig,
-  VolumeConfig
+  VolumeConfig,
+  QueueConfig
 } from './types';
 
 // Enums and constants
-export { EasingType, FadeType, GLOBAL_PROGRESS_KEY } from './types';
+export { EasingType, FadeType, MAX_CHANNELS, TimerType, GLOBAL_PROGRESS_KEY } from './types';

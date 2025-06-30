@@ -2,9 +2,9 @@
  * @fileoverview Core queue management functions for the audio-channel-queue package
  */
 
-import { ExtendedAudioQueueChannel, AudioQueueOptions } from './types';
+import { ExtendedAudioQueueChannel, AudioQueueOptions, MAX_CHANNELS, QueueConfig } from './types';
 import { audioChannels } from './info';
-import { extractFileName } from './utils';
+import { extractFileName, validateAudioUrl } from './utils';
 import {
   emitQueueChange,
   emitAudioStart,
@@ -12,8 +12,210 @@ import {
   setupProgressTracking,
   cleanupProgressTracking
 } from './events';
-import { applyVolumeDucking, restoreVolumeLevels } from './volume';
+import { applyVolumeDucking, restoreVolumeLevels, cancelVolumeTransition } from './volume';
 import { setupAudioErrorHandling, handleAudioError } from './errors';
+
+/**
+ * Global queue configuration
+ */
+let globalQueueConfig: QueueConfig = {
+  defaultMaxQueueSize: undefined, // unlimited by default
+  dropOldestWhenFull: false,
+  showQueueWarnings: true
+};
+
+/**
+ * Operation lock timeout in milliseconds
+ */
+const OPERATION_LOCK_TIMEOUT: number = 100;
+
+/**
+ * Acquires an operation lock for a channel to prevent race conditions
+ * @param channelNumber - The channel number to lock
+ * @param operationName - Name of the operation for debugging
+ * @returns Promise that resolves when lock is acquired
+ * @internal
+ */
+const acquireChannelLock = async (channelNumber: number, operationName: string): Promise<void> => {
+  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
+  if (!channel) return;
+
+  const startTime: number = Date.now();
+
+  // Wait for any existing lock to be released
+  while (channel.isLocked) {
+    // Prevent infinite waiting with timeout
+    if (Date.now() - startTime > OPERATION_LOCK_TIMEOUT) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `Operation lock timeout for channel ${channelNumber} during ${operationName}. ` +
+          `Forcibly acquiring lock.`
+      );
+      break;
+    }
+
+    // Small delay to prevent tight polling
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  channel.isLocked = true;
+};
+
+/**
+ * Releases an operation lock for a channel
+ * @param channelNumber - The channel number to unlock
+ * @internal
+ */
+const releaseChannelLock = (channelNumber: number): void => {
+  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
+  if (channel) {
+    channel.isLocked = false;
+  }
+};
+
+/**
+ * Executes an operation with channel lock protection
+ * @param channelNumber - The channel number to operate on
+ * @param operationName - Name of the operation for debugging
+ * @param operation - The operation to execute
+ * @returns Promise that resolves with the operation result
+ * @internal
+ */
+const withChannelLock = async <T>(
+  channelNumber: number,
+  operationName: string,
+  operation: () => Promise<T>
+): Promise<T> => {
+  try {
+    await acquireChannelLock(channelNumber, operationName);
+    return await operation();
+  } finally {
+    releaseChannelLock(channelNumber);
+  }
+};
+
+/**
+ * Sets the global queue configuration
+ * @param config - Queue configuration options
+ * @example
+ * ```typescript
+ * setQueueConfig({
+ *   defaultMaxQueueSize: 50,
+ *   dropOldestWhenFull: true,
+ *   showQueueWarnings: true
+ * });
+ * ```
+ */
+export const setQueueConfig = (config: Partial<QueueConfig>): void => {
+  globalQueueConfig = { ...globalQueueConfig, ...config };
+};
+
+/**
+ * Gets the current global queue configuration
+ * @returns Current queue configuration
+ * @example
+ * ```typescript
+ * const config = getQueueConfig();
+ * console.log(`Default max queue size: ${config.defaultMaxQueueSize}`);
+ * ```
+ */
+export const getQueueConfig = (): QueueConfig => {
+  return { ...globalQueueConfig };
+};
+
+/**
+ * Sets the maximum queue size for a specific channel
+ * @param channelNumber - The channel number to configure
+ * @param maxSize - Maximum queue size (undefined for unlimited)
+ * @throws Error if the channel number exceeds the maximum allowed channels
+ * @example
+ * ```typescript
+ * setChannelQueueLimit(0, 25); // Limit channel 0 to 25 items
+ * setChannelQueueLimit(1, undefined); // Remove limit for channel 1
+ * ```
+ */
+export const setChannelQueueLimit = (channelNumber: number, maxSize?: number): void => {
+  // Validate channel number limits BEFORE creating any channels
+  if (channelNumber < 0) {
+    throw new Error('Channel number must be non-negative');
+  }
+  if (channelNumber >= MAX_CHANNELS) {
+    throw new Error(
+      `Channel number ${channelNumber} exceeds maximum allowed channels (${MAX_CHANNELS})`
+    );
+  }
+
+  // Ensure channel exists (now safe because we validated the limit above)
+  while (audioChannels.length <= channelNumber) {
+    audioChannels.push({
+      audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
+      audioPauseCallbacks: new Set(),
+      audioResumeCallbacks: new Set(),
+      audioStartCallbacks: new Set(),
+      isPaused: false,
+      progressCallbacks: new Map(),
+      queue: [],
+      queueChangeCallbacks: new Set(),
+      volume: 1.0
+    });
+  }
+
+  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
+  channel.maxQueueSize = maxSize;
+};
+
+/**
+ * Checks if adding an item to the queue would exceed limits and handles the situation
+ * @param channel - The channel to check
+ * @param channelNumber - The channel number for logging
+ * @param maxQueueSize - Override max queue size from options
+ * @returns true if the item can be added, false otherwise
+ * @internal
+ */
+const checkQueueLimit = (
+  channel: ExtendedAudioQueueChannel,
+  channelNumber: number,
+  maxQueueSize?: number
+): boolean => {
+  // Determine the effective queue limit
+  const effectiveLimit =
+    maxQueueSize ?? channel.maxQueueSize ?? globalQueueConfig.defaultMaxQueueSize;
+
+  if (effectiveLimit === undefined) {
+    return true; // No limit set
+  }
+
+  if (channel.queue.length < effectiveLimit) {
+    return true; // Within limits
+  }
+
+  // Queue is at or over the limit
+  if (globalQueueConfig.showQueueWarnings) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `Queue limit reached for channel ${channelNumber}. ` +
+        `Current size: ${channel.queue.length}, Limit: ${effectiveLimit}`
+    );
+  }
+
+  if (globalQueueConfig.dropOldestWhenFull) {
+    // Remove oldest item (but not currently playing)
+    if (channel.queue.length > 1) {
+      const removedAudio = channel.queue.splice(1, 1)[0];
+      cleanupProgressTracking(removedAudio, channelNumber, audioChannels);
+
+      if (globalQueueConfig.showQueueWarnings) {
+        // eslint-disable-next-line no-console
+        console.info(`Dropped oldest queued item to make room for new audio`);
+      }
+      return true;
+    }
+  }
+
+  // Cannot add - queue is full and not dropping oldest
+  return false;
+};
 
 /**
  * Queues an audio file to a specific channel and starts playing if it's the first in queue
@@ -21,12 +223,16 @@ import { setupAudioErrorHandling, handleAudioError } from './errors';
  * @param channelNumber - The channel number to queue the audio to (defaults to 0)
  * @param options - Optional configuration for the audio file
  * @returns Promise that resolves when the audio is queued and starts playing (if first in queue)
+ * @throws Error if the audio URL is invalid or potentially malicious
+ * @throws Error if the channel number exceeds the maximum allowed channels
+ * @throws Error if the queue size limit would be exceeded
  * @example
  * ```typescript
  * await queueAudio('https://example.com/song.mp3', 0);
  * await queueAudio('./sounds/notification.wav'); // Uses default channel 0
  * await queueAudio('./music/loop.mp3', 1, { loop: true }); // Loop the audio
  * await queueAudio('./urgent.wav', 0, { addToFront: true }); // Add to front of queue
+ * await queueAudio('./limited.mp3', 0, { maxQueueSize: 10 }); // Limit this queue to 10 items
  * ```
  */
 export const queueAudio = async (
@@ -34,6 +240,19 @@ export const queueAudio = async (
   channelNumber: number = 0,
   options?: AudioQueueOptions
 ): Promise<void> => {
+  // Validate the URL for security
+  const validatedUrl: string = validateAudioUrl(audioUrl);
+
+  // Check channel number limits
+  if (channelNumber < 0) {
+    throw new Error('Channel number must be non-negative');
+  }
+  if (channelNumber >= MAX_CHANNELS) {
+    throw new Error(
+      `Channel number ${channelNumber} exceeds maximum allowed channels (${MAX_CHANNELS})`
+    );
+  }
+
   // Ensure the channel exists
   while (audioChannels.length <= channelNumber) {
     audioChannels.push({
@@ -51,11 +270,17 @@ export const queueAudio = async (
   }
 
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  const audio: HTMLAudioElement = new Audio(audioUrl);
+
+  // Check queue size limits before creating audio element
+  if (!checkQueueLimit(channel, channelNumber, options?.maxQueueSize)) {
+    throw new Error(`Queue size limit exceeded for channel ${channelNumber}`);
+  }
+
+  const audio: HTMLAudioElement = new Audio(validatedUrl);
 
   // Set up comprehensive error handling
-  setupAudioErrorHandling(audio, channelNumber, audioUrl, async (error: Error) => {
-    await handleAudioError(audio, channelNumber, audioUrl, error);
+  setupAudioErrorHandling(audio, channelNumber, validatedUrl, async (error: Error) => {
+    await handleAudioError(audio, channelNumber, validatedUrl, error);
   });
 
   // Apply options if provided
@@ -68,6 +293,10 @@ export const queueAudio = async (
       audio.volume = clampedVolume;
       // Set channel volume to match the audio volume
       channel.volume = clampedVolume;
+    }
+    // Set channel-specific queue limit if provided
+    if (typeof options.maxQueueSize === 'number') {
+      channel.maxQueueSize = options.maxQueueSize;
     }
   }
 
@@ -94,7 +323,7 @@ export const queueAudio = async (
     // Use setTimeout to ensure the queue change event is emitted first
     setTimeout(() => {
       playAudioQueue(channelNumber).catch((error: Error) => {
-        handleAudioError(audio, channelNumber, audioUrl, error);
+        handleAudioError(audio, channelNumber, validatedUrl, error);
       });
     }, 0);
   }
@@ -195,19 +424,9 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
         audioChannels
       );
 
-      // Restore volume levels when priority channel stops
-      await restoreVolumeLevels(channelNumber);
-
-      // Clean up event listeners
-      currentAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      currentAudio.removeEventListener('play', handlePlay);
-      currentAudio.removeEventListener('ended', handleEnded);
-
-      cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
-
       // Handle looping vs non-looping audio
       if (currentAudio.loop) {
-        // For looping audio, reset current time and continue playing
+        // For looping audio, keep in queue and try to restart playback
         currentAudio.currentTime = 0;
         try {
           await currentAudio.play();
@@ -217,11 +436,17 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
         resolve();
       } else {
         // For non-looping audio, remove from queue and play next
+        currentAudio.pause();
+        cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
         channel.queue.shift();
+        channel.isPaused = false; // Reset pause state
 
-        // Emit queue change after completion
-        setTimeout(() => emitQueueChange(channelNumber, audioChannels), 10);
+        // Restore volume levels AFTER removing audio from queue
+        await restoreVolumeLevels(channelNumber);
 
+        emitQueueChange(channelNumber, audioChannels);
+
+        // Play next audio immediately if there's more in queue
         await playAudioQueue(channelNumber);
         resolve();
       }
@@ -270,19 +495,21 @@ export const stopCurrentAudioInChannel = async (channelNumber: number = 0): Prom
       audioChannels
     );
 
-    // Restore volume levels when stopping
-    await restoreVolumeLevels(channelNumber);
-
     currentAudio.pause();
     cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
     channel.queue.shift();
     channel.isPaused = false; // Reset pause state
 
+    // Restore volume levels AFTER removing from queue (so queue.length check works correctly)
+    await restoreVolumeLevels(channelNumber);
+
     emitQueueChange(channelNumber, audioChannels);
 
-    // Start next audio without waiting for it to complete
-    // eslint-disable-next-line no-console
-    playAudioQueue(channelNumber).catch(console.error);
+    // Start next audio immediately if there's more in queue
+    if (channel.queue.length > 0) {
+      // eslint-disable-next-line no-console
+      playAudioQueue(channelNumber).catch(console.error);
+    }
   }
 };
 
@@ -296,35 +523,39 @@ export const stopCurrentAudioInChannel = async (channelNumber: number = 0): Prom
  * ```
  */
 export const stopAllAudioInChannel = async (channelNumber: number = 0): Promise<void> => {
-  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
-  if (channel) {
-    if (channel.queue.length > 0) {
-      const currentAudio: HTMLAudioElement = channel.queue[0];
+  return withChannelLock(channelNumber, 'stopAllAudioInChannel', async () => {
+    const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
+    if (channel) {
+      if (channel.queue.length > 0) {
+        const currentAudio: HTMLAudioElement = channel.queue[0];
 
-      emitAudioComplete(
-        channelNumber,
-        {
+        emitAudioComplete(
           channelNumber,
-          fileName: extractFileName(currentAudio.src),
-          remainingInQueue: 0, // Will be 0 since we're clearing the queue
-          src: currentAudio.src
-        },
-        audioChannels
+          {
+            channelNumber,
+            fileName: extractFileName(currentAudio.src),
+            remainingInQueue: 0, // Will be 0 since we're clearing the queue
+            src: currentAudio.src
+          },
+          audioChannels
+        );
+
+        // Restore volume levels when stopping
+        await restoreVolumeLevels(channelNumber);
+
+        currentAudio.pause();
+        cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
+      }
+      // Clean up all progress tracking for this channel
+      channel.queue.forEach((audio) =>
+        cleanupProgressTracking(audio, channelNumber, audioChannels)
       );
+      channel.queue = [];
+      channel.isPaused = false; // Reset pause state
 
-      // Restore volume levels when stopping
-      await restoreVolumeLevels(channelNumber);
-
-      currentAudio.pause();
-      cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
+      emitQueueChange(channelNumber, audioChannels);
     }
-    // Clean up all progress tracking for this channel
-    channel.queue.forEach((audio) => cleanupProgressTracking(audio, channelNumber, audioChannels));
-    channel.queue = [];
-    channel.isPaused = false; // Reset pause state
-
-    emitQueueChange(channelNumber, audioChannels);
-  }
+  });
 };
 
 /**
@@ -340,4 +571,112 @@ export const stopAllAudio = async (): Promise<void> => {
     stopPromises.push(stopAllAudioInChannel(index));
   });
   await Promise.all(stopPromises);
+};
+
+/**
+ * Completely destroys a channel and cleans up all associated resources
+ * This stops all audio, cancels transitions, clears callbacks, and removes the channel
+ * @param channelNumber - The channel number to destroy (defaults to 0)
+ * @example
+ * ```typescript
+ * await destroyChannel(1); // Completely removes channel 1 and cleans up resources
+ * ```
+ */
+export const destroyChannel = async (channelNumber: number = 0): Promise<void> => {
+  const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
+  if (!channel) return;
+
+  // Comprehensive cleanup of all audio elements in the queue
+  if (channel.queue && channel.queue.length > 0) {
+    channel.queue.forEach((audio: HTMLAudioElement) => {
+      // Properly clean up each audio element
+      const cleanAudio = audio;
+      cleanAudio.pause();
+      cleanAudio.currentTime = 0;
+
+      // Remove all event listeners if possible
+      if (cleanAudio.parentNode) {
+        cleanAudio.parentNode.removeChild(cleanAudio);
+      }
+
+      // Clean up audio attributes
+      cleanAudio.removeAttribute('src');
+
+      // Reset audio element state
+      if (cleanAudio.src) {
+        // Copy essential properties
+        cleanAudio.src = '';
+        try {
+          cleanAudio.load();
+        } catch {
+          // Ignore load errors in tests (jsdom limitation)
+        }
+      }
+    });
+  }
+
+  // Stop all audio in the channel (this handles additional cleanup)
+  await stopAllAudioInChannel(channelNumber);
+
+  // Cancel any active volume transitions
+  cancelVolumeTransition(channelNumber);
+
+  // Clear all callback sets completely
+  const callbackProperties = [
+    'audioCompleteCallbacks',
+    'audioErrorCallbacks',
+    'audioPauseCallbacks',
+    'audioResumeCallbacks',
+    'audioStartCallbacks',
+    'queueChangeCallbacks',
+    'progressCallbacks'
+  ] as const;
+
+  callbackProperties.forEach((prop) => {
+    if (channel[prop]) {
+      channel[prop].clear();
+    }
+  });
+
+  // Remove optional channel configuration
+  delete channel.fadeState;
+  delete channel.retryConfig;
+
+  // Reset required properties to clean state
+  channel.isPaused = false;
+  channel.volume = 1.0;
+  channel.queue = [];
+
+  // Remove the channel completely
+  delete audioChannels[channelNumber];
+};
+
+/**
+ * Destroys all channels and cleans up all resources
+ * This is useful for complete cleanup when the audio system is no longer needed
+ * @example
+ * ```typescript
+ * await destroyAllChannels(); // Complete cleanup - removes all channels
+ * ```
+ */
+export const destroyAllChannels = async (): Promise<void> => {
+  const destroyPromises: Promise<void>[] = [];
+
+  // Collect indices of existing channels
+  const channelIndices: number[] = [];
+  audioChannels.forEach((_channel: ExtendedAudioQueueChannel, index: number) => {
+    if (audioChannels[index]) {
+      channelIndices.push(index);
+    }
+  });
+
+  // Destroy all channels in parallel
+  channelIndices.forEach((index: number) => {
+    destroyPromises.push(destroyChannel(index));
+  });
+
+  await Promise.all(destroyPromises);
+
+  // Clear the entire array
+  audioChannels.length = 0;
 };

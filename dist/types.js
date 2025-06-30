@@ -3,7 +3,11 @@
  * @fileoverview Type definitions for the audio-channel-queue package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FadeType = exports.EasingType = exports.GLOBAL_PROGRESS_KEY = void 0;
+exports.TimerType = exports.FadeType = exports.EasingType = exports.GLOBAL_PROGRESS_KEY = exports.MAX_CHANNELS = void 0;
+/**
+ * Maximum number of audio channels allowed to prevent memory exhaustion
+ */
+exports.MAX_CHANNELS = 64;
 /**
  * Symbol used as a key for global (channel-wide) progress callbacks
  * This avoids the need for `null as any` type assertions
@@ -28,3 +32,11 @@ var FadeType;
     FadeType["Gentle"] = "gentle";
     FadeType["Dramatic"] = "dramatic";
 })(FadeType || (exports.FadeType = FadeType = {}));
+/**
+ * Timer types for volume transitions to ensure proper cleanup
+ */
+var TimerType;
+(function (TimerType) {
+    TimerType["RequestAnimationFrame"] = "raf";
+    TimerType["Timeout"] = "timeout";
+})(TimerType || (exports.TimerType = TimerType = {}));

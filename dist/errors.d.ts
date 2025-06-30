@@ -6,6 +6,7 @@ import { AudioErrorInfo, AudioErrorCallback, RetryConfig, ErrorRecoveryOptions, 
  * Subscribes to audio error events for a specific channel
  * @param channelNumber - The channel number to listen to (defaults to 0)
  * @param callback - Function to call when an audio error occurs
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioError(0, (errorInfo) => {

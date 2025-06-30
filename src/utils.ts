@@ -5,6 +5,101 @@
 import { AudioInfo, QueueSnapshot, ExtendedAudioQueueChannel, QueueItem } from './types';
 
 /**
+ * Validates an audio URL for security and correctness
+ * @param url - The URL to validate
+ * @returns The validated URL
+ * @throws Error if the URL is invalid or potentially malicious
+ * @example
+ * ```typescript
+ * validateAudioUrl('https://example.com/audio.mp3'); // Valid
+ * validateAudioUrl('./sounds/local.wav'); // Valid relative path
+ * validateAudioUrl('javascript:alert("XSS")'); // Throws error
+ * validateAudioUrl('data:text/html,<script>alert("XSS")</script>'); // Throws error
+ * ```
+ */
+export const validateAudioUrl = (url: string): string => {
+  if (!url || typeof url !== 'string') {
+    throw new Error('Audio URL must be a non-empty string');
+  }
+
+  // Trim whitespace
+  const trimmedUrl: string = url.trim();
+
+  // Check for dangerous protocols
+  const dangerousProtocols: string[] = [
+    'javascript:',
+    'data:',
+    'vbscript:',
+    'file:',
+    'about:',
+    'chrome:',
+    'chrome-extension:'
+  ];
+
+  const lowerUrl: string = trimmedUrl.toLowerCase();
+  for (const protocol of dangerousProtocols) {
+    if (lowerUrl.startsWith(protocol)) {
+      throw new Error(`Invalid audio URL: dangerous protocol "${protocol}" is not allowed`);
+    }
+  }
+
+  // Check for path traversal attempts
+  if (trimmedUrl.includes('../') || trimmedUrl.includes('..\\')) {
+    throw new Error('Invalid audio URL: path traversal attempts are not allowed');
+  }
+
+  // For relative URLs, ensure they don't start with dangerous characters
+  if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+    // Check for protocol-less URLs that might be interpreted as protocols
+    if (trimmedUrl.includes(':') && !trimmedUrl.startsWith('//')) {
+      const colonIndex: number = trimmedUrl.indexOf(':');
+      const beforeColon: string = trimmedUrl.substring(0, colonIndex);
+      // Allow only if it looks like a Windows drive letter (e.g., C:)
+      if (!/^[a-zA-Z]$/.test(beforeColon)) {
+        throw new Error('Invalid audio URL: suspicious protocol-like pattern detected');
+      }
+    }
+  }
+
+  // Validate common audio file extensions (warning, not error)
+  const hasAudioExtension: boolean = /\.(mp3|wav|ogg|m4a|webm|aac|flac|opus|weba|mp4)$/i.test(
+    trimmedUrl
+  );
+  if (!hasAudioExtension && !trimmedUrl.includes('?')) {
+    // Log warning but don't throw - some valid URLs might not have extensions
+    // eslint-disable-next-line no-console
+    console.warn(`Audio URL "${trimmedUrl}" does not have a recognized audio file extension`);
+  }
+
+  return trimmedUrl;
+};
+
+/**
+ * Sanitizes a string for safe display in HTML contexts
+ * @param text - The text to sanitize
+ * @returns The sanitized text safe for display
+ * @example
+ * ```typescript
+ * sanitizeForDisplay('<script>alert("XSS")</script>'); // Returns: '&lt;script&gt;alert("XSS")&lt;/script&gt;'
+ * sanitizeForDisplay('normal-file.mp3'); // Returns: 'normal-file.mp3'
+ * ```
+ */
+export const sanitizeForDisplay = (text: string): string => {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+
+  // Replace HTML special characters
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+};
+
+/**
  * Extracts the filename from a URL string
  * @param url - The URL to extract the filename from
  * @returns The extracted filename or 'unknown' if extraction fails
@@ -15,17 +110,23 @@ import { AudioInfo, QueueSnapshot, ExtendedAudioQueueChannel, QueueItem } from '
  * ```
  */
 export const extractFileName = (url: string): string => {
+  if (!url || typeof url !== 'string') {
+    return sanitizeForDisplay('unknown');
+  }
+
+  // Always use simple string manipulation for consistency
+  const segments: string[] = url.split('/');
+  const lastSegment: string = segments[segments.length - 1] || '';
+
+  // Remove query parameters and hash
+  const fileName: string = lastSegment.split('?')[0].split('#')[0];
+
+  // Decode URI components and sanitize
   try {
-    const urlObj: URL = new URL(url);
-    const pathname: string = urlObj.pathname;
-    const segments: string[] = pathname.split('/');
-    const fileName: string = segments[segments.length - 1];
-    return fileName || 'unknown';
+    return sanitizeForDisplay(decodeURIComponent(fileName || 'unknown'));
   } catch {
-    // If URL parsing fails, try simple string manipulation
-    const segments: string[] = url.split('/');
-    const fileName: string = segments[segments.length - 1];
-    return fileName || 'unknown';
+    // If decoding fails, return the sanitized raw filename
+    return sanitizeForDisplay(fileName || 'unknown');
   }
 };
 

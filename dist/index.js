@@ -5,8 +5,8 @@
  * volume management with ducking, progress tracking, and comprehensive event system
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.audioChannels = exports.onQueueChange = exports.onAudioStart = exports.onAudioResume = exports.onAudioProgress = exports.onAudioPause = exports.onAudioComplete = exports.offQueueChange = exports.offAudioResume = exports.offAudioProgress = exports.offAudioPause = exports.getQueueSnapshot = exports.getCurrentAudioInfo = exports.getAllChannelsInfo = exports.transitionVolume = exports.setVolumeDucking = exports.setChannelVolume = exports.setAllChannelsVolume = exports.getFadeConfig = exports.getChannelVolume = exports.getAllChannelsVolume = exports.fadeVolume = exports.clearVolumeDucking = exports.togglePauseWithFade = exports.togglePauseChannel = exports.togglePauseAllWithFade = exports.togglePauseAllChannels = exports.resumeWithFade = exports.resumeChannel = exports.resumeAllWithFade = exports.resumeAllChannels = exports.pauseWithFade = exports.pauseChannel = exports.pauseAllWithFade = exports.pauseAllChannels = exports.isChannelPaused = exports.getAllChannelsPauseState = exports.setRetryConfig = exports.setErrorRecovery = exports.retryFailedAudio = exports.onAudioError = exports.offAudioError = exports.getRetryConfig = exports.getErrorRecovery = exports.playAudioQueue = exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.queueAudioPriority = exports.queueAudio = void 0;
-exports.GLOBAL_PROGRESS_KEY = exports.FadeType = exports.EasingType = exports.getAudioInfoFromElement = exports.extractFileName = exports.createQueueSnapshot = exports.cleanWebpackFilename = void 0;
+exports.getAllChannelsInfo = exports.cancelAllVolumeTransitions = exports.cancelVolumeTransition = exports.transitionVolume = exports.setVolumeDucking = exports.setChannelVolume = exports.setAllChannelsVolume = exports.getFadeConfig = exports.getChannelVolume = exports.getAllChannelsVolume = exports.fadeVolume = exports.clearVolumeDucking = exports.togglePauseWithFade = exports.togglePauseChannel = exports.togglePauseAllWithFade = exports.togglePauseAllChannels = exports.resumeWithFade = exports.resumeChannel = exports.resumeAllWithFade = exports.resumeAllChannels = exports.pauseWithFade = exports.pauseChannel = exports.pauseAllWithFade = exports.pauseAllChannels = exports.isChannelPaused = exports.getAllChannelsPauseState = exports.setRetryConfig = exports.setErrorRecovery = exports.retryFailedAudio = exports.onAudioError = exports.offAudioError = exports.getRetryConfig = exports.getErrorRecovery = exports.swapQueueItems = exports.reorderQueue = exports.removeQueuedItem = exports.getQueueLength = exports.getQueueItemInfo = exports.clearQueueAfterCurrent = exports.setChannelQueueLimit = exports.getQueueConfig = exports.setQueueConfig = exports.destroyAllChannels = exports.destroyChannel = exports.playAudioQueue = exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.queueAudioPriority = exports.queueAudio = void 0;
+exports.GLOBAL_PROGRESS_KEY = exports.TimerType = exports.MAX_CHANNELS = exports.FadeType = exports.EasingType = exports.validateAudioUrl = exports.sanitizeForDisplay = exports.getAudioInfoFromElement = exports.extractFileName = exports.createQueueSnapshot = exports.cleanWebpackFilename = exports.audioChannels = exports.onQueueChange = exports.onAudioStart = exports.onAudioResume = exports.onAudioProgress = exports.onAudioPause = exports.onAudioComplete = exports.offQueueChange = exports.offAudioResume = exports.offAudioProgress = exports.offAudioPause = exports.getQueueSnapshot = exports.getCurrentAudioInfo = void 0;
 // Core queue management functions
 var core_1 = require("./core");
 Object.defineProperty(exports, "queueAudio", { enumerable: true, get: function () { return core_1.queueAudio; } });
@@ -15,6 +15,19 @@ Object.defineProperty(exports, "stopCurrentAudioInChannel", { enumerable: true, 
 Object.defineProperty(exports, "stopAllAudioInChannel", { enumerable: true, get: function () { return core_1.stopAllAudioInChannel; } });
 Object.defineProperty(exports, "stopAllAudio", { enumerable: true, get: function () { return core_1.stopAllAudio; } });
 Object.defineProperty(exports, "playAudioQueue", { enumerable: true, get: function () { return core_1.playAudioQueue; } });
+Object.defineProperty(exports, "destroyChannel", { enumerable: true, get: function () { return core_1.destroyChannel; } });
+Object.defineProperty(exports, "destroyAllChannels", { enumerable: true, get: function () { return core_1.destroyAllChannels; } });
+Object.defineProperty(exports, "setQueueConfig", { enumerable: true, get: function () { return core_1.setQueueConfig; } });
+Object.defineProperty(exports, "getQueueConfig", { enumerable: true, get: function () { return core_1.getQueueConfig; } });
+Object.defineProperty(exports, "setChannelQueueLimit", { enumerable: true, get: function () { return core_1.setChannelQueueLimit; } });
+// Queue manipulation functions
+var queue_manipulation_1 = require("./queue-manipulation");
+Object.defineProperty(exports, "clearQueueAfterCurrent", { enumerable: true, get: function () { return queue_manipulation_1.clearQueueAfterCurrent; } });
+Object.defineProperty(exports, "getQueueItemInfo", { enumerable: true, get: function () { return queue_manipulation_1.getQueueItemInfo; } });
+Object.defineProperty(exports, "getQueueLength", { enumerable: true, get: function () { return queue_manipulation_1.getQueueLength; } });
+Object.defineProperty(exports, "removeQueuedItem", { enumerable: true, get: function () { return queue_manipulation_1.removeQueuedItem; } });
+Object.defineProperty(exports, "reorderQueue", { enumerable: true, get: function () { return queue_manipulation_1.reorderQueue; } });
+Object.defineProperty(exports, "swapQueueItems", { enumerable: true, get: function () { return queue_manipulation_1.swapQueueItems; } });
 // Error handling and recovery functions
 var errors_1 = require("./errors");
 Object.defineProperty(exports, "getErrorRecovery", { enumerable: true, get: function () { return errors_1.getErrorRecovery; } });
@@ -51,6 +64,8 @@ Object.defineProperty(exports, "setAllChannelsVolume", { enumerable: true, get: 
 Object.defineProperty(exports, "setChannelVolume", { enumerable: true, get: function () { return volume_1.setChannelVolume; } });
 Object.defineProperty(exports, "setVolumeDucking", { enumerable: true, get: function () { return volume_1.setVolumeDucking; } });
 Object.defineProperty(exports, "transitionVolume", { enumerable: true, get: function () { return volume_1.transitionVolume; } });
+Object.defineProperty(exports, "cancelVolumeTransition", { enumerable: true, get: function () { return volume_1.cancelVolumeTransition; } });
+Object.defineProperty(exports, "cancelAllVolumeTransitions", { enumerable: true, get: function () { return volume_1.cancelAllVolumeTransitions; } });
 // Audio information and progress tracking functions
 var info_1 = require("./info");
 Object.defineProperty(exports, "getAllChannelsInfo", { enumerable: true, get: function () { return info_1.getAllChannelsInfo; } });
@@ -75,8 +90,12 @@ Object.defineProperty(exports, "cleanWebpackFilename", { enumerable: true, get: 
 Object.defineProperty(exports, "createQueueSnapshot", { enumerable: true, get: function () { return utils_1.createQueueSnapshot; } });
 Object.defineProperty(exports, "extractFileName", { enumerable: true, get: function () { return utils_1.extractFileName; } });
 Object.defineProperty(exports, "getAudioInfoFromElement", { enumerable: true, get: function () { return utils_1.getAudioInfoFromElement; } });
+Object.defineProperty(exports, "sanitizeForDisplay", { enumerable: true, get: function () { return utils_1.sanitizeForDisplay; } });
+Object.defineProperty(exports, "validateAudioUrl", { enumerable: true, get: function () { return utils_1.validateAudioUrl; } });
 // Enums and constants
 var types_1 = require("./types");
 Object.defineProperty(exports, "EasingType", { enumerable: true, get: function () { return types_1.EasingType; } });
 Object.defineProperty(exports, "FadeType", { enumerable: true, get: function () { return types_1.FadeType; } });
+Object.defineProperty(exports, "MAX_CHANNELS", { enumerable: true, get: function () { return types_1.MAX_CHANNELS; } });
+Object.defineProperty(exports, "TimerType", { enumerable: true, get: function () { return types_1.TimerType; } });
 Object.defineProperty(exports, "GLOBAL_PROGRESS_KEY", { enumerable: true, get: function () { return types_1.GLOBAL_PROGRESS_KEY; } });

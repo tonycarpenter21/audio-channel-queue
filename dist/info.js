@@ -3,15 +3,73 @@
  * @fileoverview Audio information and progress tracking functions for the audio-channel-queue package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports.onAudioPause = exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.offAudioProgress = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = void 0;
+exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports.onAudioPause = exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = void 0;
+exports.offAudioProgress = offAudioProgress;
 const types_1 = require("./types");
 const utils_1 = require("./utils");
 const events_1 = require("./events");
 /**
  * Global array to store audio channels with their queues and callback management
  * Each channel maintains its own audio queue and event callback sets
+ *
+ * Note: While you can inspect this array for debugging, direct modification is discouraged.
+ * Use the provided API functions for safe channel management.
  */
-exports.audioChannels = [];
+exports.audioChannels = new Proxy([], {
+    deleteProperty(target, prop) {
+        if (typeof prop === 'string' && !isNaN(Number(prop))) {
+            // eslint-disable-next-line no-console
+            console.warn('Warning: Direct deletion from audioChannels detected. ' +
+                'Consider using stopAllAudioInChannel() for proper cleanup.');
+        }
+        delete target[prop];
+        return true;
+    },
+    get(target, prop) {
+        const value = target[prop];
+        // Return channel objects with warnings on modification attempts
+        if (typeof value === 'object' &&
+            value !== null &&
+            typeof prop === 'string' &&
+            !isNaN(Number(prop))) {
+            return new Proxy(value, {
+                set(channelTarget, channelProp, channelValue) {
+                    // Allow internal modifications but warn about direct property changes
+                    if (typeof channelProp === 'string' &&
+                        !['queue', 'volume', 'isPaused', 'isLocked', 'volumeConfig'].includes(channelProp)) {
+                        // eslint-disable-next-line no-console
+                        console.warn(`Warning: Direct modification of channel.${channelProp} detected. ` +
+                            'Use API functions for safer channel management.');
+                    }
+                    const key = typeof channelProp === 'symbol' ? channelProp.toString() : channelProp;
+                    channelTarget[key] = channelValue;
+                    return true;
+                }
+            });
+        }
+        return value;
+    },
+    set(target, prop, value) {
+        // Allow normal array operations
+        const key = typeof prop === 'symbol' ? prop.toString() : prop;
+        target[key] = value;
+        return true;
+    }
+});
+/**
+ * Validates a channel number against MAX_CHANNELS limit
+ * @param channelNumber - The channel number to validate
+ * @throws Error if the channel number is invalid
+ * @internal
+ */
+const validateChannelNumber = (channelNumber) => {
+    if (channelNumber < 0) {
+        throw new Error('Channel number must be non-negative');
+    }
+    if (channelNumber >= types_1.MAX_CHANNELS) {
+        throw new Error(`Channel number ${channelNumber} exceeds maximum allowed channels (${types_1.MAX_CHANNELS})`);
+    }
+};
 /**
  * Gets current audio information for a specific channel
  * @param channelNumber - The channel number (defaults to 0)
@@ -57,18 +115,19 @@ const getAllChannelsInfo = () => {
 exports.getAllChannelsInfo = getAllChannelsInfo;
 /**
  * Gets a complete snapshot of the queue state for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @returns QueueSnapshot object or null if channel doesn't exist
  * @example
  * ```typescript
- * const snapshot = getQueueSnapshot(0);
+ * const snapshot = getQueueSnapshot();
  * if (snapshot) {
  *   console.log(`Queue has ${snapshot.totalItems} items`);
  *   console.log(`Currently playing: ${snapshot.items[0]?.fileName}`);
  * }
+ * const channelSnapshot = getQueueSnapshot(2);
  * ```
  */
-const getQueueSnapshot = (channelNumber) => {
+const getQueueSnapshot = (channelNumber = 0) => {
     return (0, utils_1.createQueueSnapshot)(channelNumber, exports.audioChannels);
 };
 exports.getQueueSnapshot = getQueueSnapshot;
@@ -76,6 +135,7 @@ exports.getQueueSnapshot = getQueueSnapshot;
  * Subscribes to real-time progress updates for a specific channel
  * @param channelNumber - The channel number
  * @param callback - Function to call with audio info updates
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioProgress(0, (info) => {
@@ -85,6 +145,7 @@ exports.getQueueSnapshot = getQueueSnapshot;
  * ```
  */
 const onAudioProgress = (channelNumber, callback) => {
+    validateChannelNumber(channelNumber);
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
@@ -122,13 +183,14 @@ const onAudioProgress = (channelNumber, callback) => {
 exports.onAudioProgress = onAudioProgress;
 /**
  * Removes progress listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioProgress(0); // Stop receiving progress updates for channel 0
+ * offAudioProgress();
+ * offAudioProgress(1); // Stop receiving progress updates for channel 1
  * ```
  */
-const offAudioProgress = (channelNumber) => {
+function offAudioProgress(channelNumber = 0) {
     const channel = exports.audioChannels[channelNumber];
     if (!(channel === null || channel === void 0 ? void 0 : channel.progressCallbacks))
         return;
@@ -139,12 +201,12 @@ const offAudioProgress = (channelNumber) => {
     }
     // Clear all callbacks for this channel
     channel.progressCallbacks.clear();
-};
-exports.offAudioProgress = offAudioProgress;
+}
 /**
  * Subscribes to queue change events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when queue changes
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onQueueChange(0, (snapshot) => {
@@ -154,6 +216,7 @@ exports.offAudioProgress = offAudioProgress;
  * ```
  */
 const onQueueChange = (channelNumber, callback) => {
+    validateChannelNumber(channelNumber);
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
@@ -194,6 +257,7 @@ exports.offQueueChange = offQueueChange;
  * Subscribes to audio start events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio starts playing
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioStart(0, (info) => {
@@ -203,6 +267,7 @@ exports.offQueueChange = offQueueChange;
  * ```
  */
 const onAudioStart = (channelNumber, callback) => {
+    validateChannelNumber(channelNumber);
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
@@ -228,6 +293,7 @@ exports.onAudioStart = onAudioStart;
  * Subscribes to audio complete events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio completes
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioComplete(0, (info) => {
@@ -239,6 +305,7 @@ exports.onAudioStart = onAudioStart;
  * ```
  */
 const onAudioComplete = (channelNumber, callback) => {
+    validateChannelNumber(channelNumber);
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
@@ -264,6 +331,7 @@ exports.onAudioComplete = onAudioComplete;
  * Subscribes to audio pause events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio is paused
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioPause(0, (channelNumber, info) => {
@@ -273,6 +341,7 @@ exports.onAudioComplete = onAudioComplete;
  * ```
  */
 const onAudioPause = (channelNumber, callback) => {
+    validateChannelNumber(channelNumber);
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
@@ -298,6 +367,7 @@ exports.onAudioPause = onAudioPause;
  * Subscribes to audio resume events for a specific channel
  * @param channelNumber - The channel number to monitor
  * @param callback - Function to call when audio is resumed
+ * @throws Error if the channel number exceeds the maximum allowed channels
  * @example
  * ```typescript
  * onAudioResume(0, (channelNumber, info) => {
@@ -307,6 +377,7 @@ exports.onAudioPause = onAudioPause;
  * ```
  */
 const onAudioResume = (channelNumber, callback) => {
+    validateChannelNumber(channelNumber);
     if (!exports.audioChannels[channelNumber]) {
         exports.audioChannels[channelNumber] = {
             audioCompleteCallbacks: new Set(),
