@@ -20,7 +20,7 @@ import {
 } from '../src/pause';
 import { onAudioPause, onAudioResume, audioChannels } from '../src/info';
 import { queueAudio } from '../src/core';
-import { toMockAudioElement, mockCallback, waitForPromises } from './setup';
+import { toMockAudioElement, mockCallback } from './setup';
 import { AudioInfo, FadeType, EasingType } from '../src/types';
 import { getFadeConfig } from '../src/volume';
 
@@ -345,9 +345,6 @@ describe('Pause/Resume Functionality', () => {
           // Pause with fade to set up fade state
           await pauseWithFade(FadeType.Gentle, 0);
 
-          // Wait for promises to resolve
-          await waitForPromises();
-
           // The audio should now be paused with fadeState set
           expect(audioChannels[0].fadeState).toBeDefined();
 
@@ -539,9 +536,6 @@ describe('Pause/Resume Functionality', () => {
     it('should not resume already playing audio', async () => {
       await queueAudio('test.mp3', 0);
 
-      // Wait for async playback to complete setup
-      await waitForPromises(50);
-
       const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
       // Set up the state: audio is already playing
@@ -558,9 +552,6 @@ describe('Pause/Resume Functionality', () => {
 
     it('should not resume ended audio', async () => {
       await queueAudio('test.mp3', 0);
-
-      // Wait for async playback to complete setup
-      await waitForPromises(50);
 
       const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
 
@@ -773,9 +764,6 @@ describe('Pause/Resume Functionality', () => {
       await queueAudio('test2.mp3', 1);
       await queueAudio('test3.mp3', 2);
 
-      // Wait for audio to start playing
-      await waitForPromises(50);
-
       const mockAudio1 = toMockAudioElement(audioChannels[0].queue[0]);
       const mockAudio2 = toMockAudioElement(audioChannels[1].queue[0]);
       const mockAudio3 = toMockAudioElement(audioChannels[2].queue[0]);
@@ -801,9 +789,6 @@ describe('Pause/Resume Functionality', () => {
     it('should resume all channels when all channels are paused', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
-
-      // Wait for audio to start, then pause everything
-      await waitForPromises(50);
       await pauseAllChannels();
 
       const mockAudio1 = toMockAudioElement(audioChannels[0].queue[0]);
@@ -824,9 +809,6 @@ describe('Pause/Resume Functionality', () => {
     it('should handle mixed pause states correctly (pause all if any playing)', async () => {
       await queueAudio('test1.mp3', 0);
       await queueAudio('test2.mp3', 1);
-
-      // Wait for audio to start
-      await waitForPromises(50);
 
       // Pause only one channel
       await pauseChannel(0);
@@ -867,9 +849,6 @@ describe('Pause/Resume Functionality', () => {
 
     it('should work correctly with single channel', async () => {
       await queueAudio('test.mp3', 0);
-
-      // Wait for audio to start
-      await waitForPromises(50);
 
       const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       mockAudio.paused = false;

@@ -11,8 +11,8 @@ import {
 } from '../src/core';
 import { audioChannels } from '../src/info';
 import { setVolumeDucking, clearVolumeDucking } from '../src/volume';
-import { toMockAudioElement, mockCallback, waitForPromises } from './setup';
 import { AudioStartInfo, VolumeConfig } from '../src/types';
+import { toMockAudioElement, mockCallback } from './setup';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -153,7 +153,6 @@ describe('Enhanced Core Features', () => {
 
       // Simulate audio ending - should not move to next item due to loop
       mockAudio.dispatchEvent(new Event('ended'));
-      await waitForPromises();
 
       expect(audioChannels[0].queue.length).toBe(1);
       expect(audioChannels[0].queue[0].src).toBe('loop.mp3');
@@ -166,12 +165,8 @@ describe('Enhanced Core Features', () => {
       const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       expect(mockAudio.loop).toBe(false);
 
-      // Wait for audio to start playing
-      await waitForPromises(50);
-
       // Simulate audio ending - should move to next item
       mockAudio.simulateEnded();
-      await waitForPromises(50);
 
       expect(audioChannels[0].queue.length).toBe(1);
       expect(audioChannels[0].queue[0].src).toBe('next.mp3');
@@ -267,9 +262,6 @@ describe('Enhanced Core Features', () => {
       };
 
       await queueAudio('test.mp3', 0, { loop: true, volume: 0.8 });
-
-      // Wait for async audio start event to fire
-      await waitForPromises(50);
 
       expect(startCallback).toHaveBeenCalledWith(
         expect.objectContaining({

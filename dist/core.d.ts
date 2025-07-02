@@ -73,10 +73,10 @@ export declare const queueAudioPriority: (audioUrl: string, channelNumber?: numb
 /**
  * Plays the audio queue for a specific channel
  * @param channelNumber - The channel number to play
- * @returns Promise that resolves when the current audio finishes playing
+ * @returns Promise that resolves when the audio starts playing (setup complete)
  * @example
  * ```typescript
- * await playAudioQueue(0); // Play queue for channel 0
+ * await playAudioQueue(0); // Start playing queue for channel 0
  * ```
  */
 export declare const playAudioQueue: (channelNumber: number) => Promise<void>;

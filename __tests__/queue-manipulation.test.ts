@@ -2,7 +2,7 @@
  * @fileoverview Tests for queue manipulation functions
  */
 
-import { toMockAudioElement, waitForPromises } from './setup';
+import { toMockAudioElement } from './setup';
 import {
   removeQueuedItem,
   reorderQueue,
@@ -371,7 +371,6 @@ describe('Queue Manipulation Functions', () => {
       await queueAudio('http://example.com/another-audio.wav');
 
       // Wait for audio to start playing and set it to playing state
-      await waitForPromises(10);
       const firstAudio = toMockAudioElement(audioChannels[0].queue[0]);
       firstAudio.paused = false; // Simulate playing state
 

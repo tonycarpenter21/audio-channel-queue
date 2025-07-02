@@ -3,11 +3,71 @@
  * @fileoverview Audio information and progress tracking functions for the audio-channel-queue package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports.onAudioPause = exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = void 0;
+exports.offAudioComplete = exports.offAudioStart = exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports.onAudioPause = exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = exports.getNonWhitelistedChannelProperties = exports.getWhitelistedChannelProperties = void 0;
 exports.offAudioProgress = offAudioProgress;
 const types_1 = require("./types");
 const utils_1 = require("./utils");
 const events_1 = require("./events");
+/**
+ * Gets the current list of whitelisted channel properties
+ * This is automatically derived from the ExtendedAudioQueueChannel interface
+ * @returns Array of whitelisted property names
+ * @internal
+ */
+const getWhitelistedChannelProperties = () => {
+    // Create a sample channel object to extract property names
+    const sampleChannel = {
+        audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+    };
+    // Get all property names from the interface (including optional ones)
+    const propertyNames = [
+        ...Object.getOwnPropertyNames(sampleChannel),
+        // Add optional properties that might not be present on the sample
+        'fadeState',
+        'isLocked',
+        'maxQueueSize',
+        'retryConfig',
+        'volumeConfig' // Legacy property that might still be used
+    ];
+    return [...new Set(propertyNames)]; // Remove duplicates
+};
+exports.getWhitelistedChannelProperties = getWhitelistedChannelProperties;
+/**
+ * Returns the list of non-whitelisted properties found on a specific channel
+ * These are properties that will trigger warnings when modified directly
+ * @param channelNumber - The channel number to inspect (defaults to 0)
+ * @returns Array of property names that are not in the whitelist, or empty array if channel doesn't exist
+ * @example
+ * ```typescript
+ * // Add some custom property to a channel
+ * (audioChannels[0] as any).customProperty = 'test';
+ *
+ * const nonWhitelisted = getNonWhitelistedChannelProperties(0);
+ * console.log(nonWhitelisted); // ['customProperty']
+ * ```
+ * @internal
+ */
+const getNonWhitelistedChannelProperties = (channelNumber = 0) => {
+    const channel = exports.audioChannels[channelNumber];
+    if (!channel) {
+        return [];
+    }
+    const whitelistedProperties = (0, exports.getWhitelistedChannelProperties)();
+    const allChannelProperties = Object.getOwnPropertyNames(channel);
+    // Filter out properties that are in the whitelist
+    const nonWhitelistedProperties = allChannelProperties.filter((property) => !whitelistedProperties.includes(property));
+    return nonWhitelistedProperties;
+};
+exports.getNonWhitelistedChannelProperties = getNonWhitelistedChannelProperties;
 /**
  * Global array to store audio channels with their queues and callback management
  * Each channel maintains its own audio queue and event callback sets
@@ -35,8 +95,9 @@ exports.audioChannels = new Proxy([], {
             return new Proxy(value, {
                 set(channelTarget, channelProp, channelValue) {
                     // Allow internal modifications but warn about direct property changes
-                    if (typeof channelProp === 'string' &&
-                        !['queue', 'volume', 'isPaused', 'isLocked', 'volumeConfig'].includes(channelProp)) {
+                    // Use the automatically-derived whitelist from the interface
+                    const whitelistedProperties = (0, exports.getWhitelistedChannelProperties)();
+                    if (typeof channelProp === 'string' && !whitelistedProperties.includes(channelProp)) {
                         // eslint-disable-next-line no-console
                         console.warn(`Warning: Direct modification of channel.${channelProp} detected. ` +
                             'Use API functions for safer channel management.');
@@ -429,3 +490,33 @@ const offAudioResume = (channelNumber) => {
     channel.audioResumeCallbacks.clear();
 };
 exports.offAudioResume = offAudioResume;
+/**
+ * Removes audio start event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioStart(0); // Stop receiving start notifications for channel 0
+ * ```
+ */
+const offAudioStart = (channelNumber) => {
+    const channel = exports.audioChannels[channelNumber];
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioStartCallbacks))
+        return;
+    channel.audioStartCallbacks.clear();
+};
+exports.offAudioStart = offAudioStart;
+/**
+ * Removes audio complete event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioComplete(0); // Stop receiving completion notifications for channel 0
+ * ```
+ */
+const offAudioComplete = (channelNumber) => {
+    const channel = exports.audioChannels[channelNumber];
+    if (!(channel === null || channel === void 0 ? void 0 : channel.audioCompleteCallbacks))
+        return;
+    channel.audioCompleteCallbacks.clear();
+};
+exports.offAudioComplete = offAudioComplete;

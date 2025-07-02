@@ -3,6 +3,29 @@
  */
 import { AudioInfo, QueueSnapshot, ProgressCallback, QueueChangeCallback, AudioStartCallback, AudioCompleteCallback, AudioPauseCallback, AudioResumeCallback, ExtendedAudioQueueChannel } from './types';
 /**
+ * Gets the current list of whitelisted channel properties
+ * This is automatically derived from the ExtendedAudioQueueChannel interface
+ * @returns Array of whitelisted property names
+ * @internal
+ */
+export declare const getWhitelistedChannelProperties: () => string[];
+/**
+ * Returns the list of non-whitelisted properties found on a specific channel
+ * These are properties that will trigger warnings when modified directly
+ * @param channelNumber - The channel number to inspect (defaults to 0)
+ * @returns Array of property names that are not in the whitelist, or empty array if channel doesn't exist
+ * @example
+ * ```typescript
+ * // Add some custom property to a channel
+ * (audioChannels[0] as any).customProperty = 'test';
+ *
+ * const nonWhitelisted = getNonWhitelistedChannelProperties(0);
+ * console.log(nonWhitelisted); // ['customProperty']
+ * ```
+ * @internal
+ */
+export declare const getNonWhitelistedChannelProperties: (channelNumber?: number) => string[];
+/**
  * Global array to store audio channels with their queues and callback management
  * Each channel maintains its own audio queue and event callback sets
  *
@@ -176,3 +199,21 @@ export declare const offAudioPause: (channelNumber: number) => void;
  * ```
  */
 export declare const offAudioResume: (channelNumber: number) => void;
+/**
+ * Removes audio start event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioStart(0); // Stop receiving start notifications for channel 0
+ * ```
+ */
+export declare const offAudioStart: (channelNumber: number) => void;
+/**
+ * Removes audio complete event listeners for a specific channel
+ * @param channelNumber - The channel number
+ * @example
+ * ```typescript
+ * offAudioComplete(0); // Stop receiving completion notifications for channel 0
+ * ```
+ */
+export declare const offAudioComplete: (channelNumber: number) => void;

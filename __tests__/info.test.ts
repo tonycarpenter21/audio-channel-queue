@@ -16,16 +16,16 @@ import {
   onAudioResume,
   offAudioPause,
   offAudioResume,
-  audioChannels
+  offAudioStart,
+  offAudioComplete,
+  audioChannels,
+  getWhitelistedChannelProperties,
+  getNonWhitelistedChannelProperties
 } from '../src/info';
-import { queueAudio } from '../src/core';
-import {
-  MockAudioElement,
-  toMockAudioElement,
-  mockCallback,
-  waitForPromises,
-  getTestChannel
-} from './setup';
+import { queueAudio, setChannelQueueLimit } from '../src/core';
+import { pauseWithFade } from '../src/pause';
+import { setChannelVolume } from '../src/volume';
+import { MockAudioElement, toMockAudioElement, mockCallback, getTestChannel } from './setup';
 import {
   AudioInfo,
   QueueSnapshot,
@@ -35,7 +35,8 @@ import {
   AudioResumeCallback,
   AudioStartCallback,
   AudioCompleteCallback,
-  QueueChangeCallback
+  QueueChangeCallback,
+  FadeType
 } from '../src/types';
 
 beforeEach(() => {
@@ -505,9 +506,6 @@ describe('Audio Lifecycle Events', () => {
 
       await queueAudio('test-song.mp3');
 
-      // Wait for async playback to start - this should trigger both events
-      await waitForPromises(50);
-
       expect(callback).toHaveBeenCalled();
       const startInfo = callback.mock.calls[0][0];
       expect(startInfo.fileName).toBe('test-song.mp3');
@@ -550,17 +548,11 @@ describe('Audio Lifecycle Events', () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
 
-      // Wait for audio to start playing first
-      await waitForPromises(50);
-
       const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
       // Simulate that audio has started and then ended
       mockAudio.paused = false;
       mockAudio.ended = false;
       mockAudio.simulateEnded();
-
-      // Wait for the event to be processed
-      await waitForPromises(50);
 
       expect(callback).toHaveBeenCalled();
       const completeInfo = callback.mock.calls[0][0];
@@ -682,6 +674,134 @@ describe('Audio Lifecycle Events', () => {
 
     expect(() => offAudioResume(testChannel)).not.toThrow();
   });
+
+  describe('offAudioStart', () => {
+    it('should clear all audio start callbacks for a channel', async () => {
+      const callback = mockCallback<(info: AudioStartInfo) => void>();
+      onAudioStart(0, callback);
+
+      // Clear the callbacks before queueing audio
+      offAudioStart(0);
+
+      await queueAudio('test-song.mp3');
+
+      // Callback should not be called since we cleared it
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should handle non-existent channel gracefully', () => {
+      expect(() => offAudioStart(999)).not.toThrow();
+    });
+
+    it('should handle channel with no start callbacks', () => {
+      // Create channel without start callbacks
+      const testChannel = getTestChannel();
+      audioChannels[testChannel] = {
+        audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: undefined as unknown as Set<AudioStartCallback>,
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+      };
+
+      expect(() => offAudioStart(testChannel)).not.toThrow();
+    });
+
+    it('should only clear start callbacks without affecting other callbacks', async () => {
+      const startCallback = mockCallback<(info: AudioStartInfo) => void>();
+      const completeCallback = mockCallback<(info: AudioCompleteInfo) => void>();
+
+      onAudioStart(0, startCallback);
+      onAudioComplete(0, completeCallback);
+
+      // Clear only start callbacks before queueing
+      offAudioStart(0);
+
+      await queueAudio('test1.mp3');
+      await queueAudio('test2.mp3');
+
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.paused = false;
+      mockAudio.ended = false;
+      mockAudio.simulateEnded();
+
+      // Start callback should not be called, but complete callback should be
+      expect(startCallback).not.toHaveBeenCalled();
+      expect(completeCallback).toHaveBeenCalled();
+    });
+  });
+
+  describe('offAudioComplete', () => {
+    it('should clear all audio complete callbacks for a channel', async () => {
+      const callback = mockCallback<(info: AudioCompleteInfo) => void>();
+      onAudioComplete(0, callback);
+
+      await queueAudio('test1.mp3');
+      await queueAudio('test2.mp3');
+
+      // Clear the callbacks
+      offAudioComplete(0);
+
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.paused = false;
+      mockAudio.ended = false;
+      mockAudio.simulateEnded();
+
+      // Callback should not be called since we cleared it
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should handle non-existent channel gracefully', () => {
+      expect(() => offAudioComplete(999)).not.toThrow();
+    });
+
+    it('should handle channel with no complete callbacks', () => {
+      // Create channel without complete callbacks
+      const testChannel = getTestChannel();
+      audioChannels[testChannel] = {
+        audioCompleteCallbacks: undefined as unknown as Set<AudioCompleteCallback>,
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+      };
+
+      expect(() => offAudioComplete(testChannel)).not.toThrow();
+    });
+
+    it('should only clear complete callbacks without affecting other callbacks', async () => {
+      const startCallback = mockCallback<(info: AudioStartInfo) => void>();
+      const completeCallback = mockCallback<(info: AudioCompleteInfo) => void>();
+
+      onAudioStart(0, startCallback);
+      onAudioComplete(0, completeCallback);
+
+      await queueAudio('test-song.mp3');
+
+      // Clear only complete callbacks
+      offAudioComplete(0);
+
+      // Start callback should be called, but complete callback should not be after clearing
+      expect(startCallback).toHaveBeenCalled();
+
+      const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+      mockAudio.paused = false;
+      mockAudio.ended = false;
+      mockAudio.simulateEnded();
+
+      expect(completeCallback).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('onAudioPause edge cases', () => {
@@ -735,5 +855,274 @@ describe('onAudioResume edge cases', () => {
 
     expect(audioChannels[testChannel].audioResumeCallbacks).toBeDefined();
     expect(audioChannels[testChannel].audioResumeCallbacks.has(callback)).toBe(true);
+  });
+});
+
+describe('Channel Modification Warning System', () => {
+  let originalConsoleWarn: typeof console.warn;
+  let mockConsoleWarn: jest.Mock;
+
+  beforeEach(() => {
+    // Set up console.warn mock
+    originalConsoleWarn = console.warn;
+    mockConsoleWarn = jest.fn();
+    console.warn = mockConsoleWarn;
+  });
+
+  afterEach(() => {
+    // Restore original console.warn
+    console.warn = originalConsoleWarn;
+  });
+
+  it('should NOT warn when legitimate API functions modify whitelisted properties', async () => {
+    // Test various API functions that should modify channel properties without warnings
+
+    // Test pause functions modifying fadeState and isPaused
+    await queueAudio('test.mp3', 0);
+    await pauseWithFade(FadeType.Gentle, 0);
+
+    // Test volume functions modifying volume
+    setChannelVolume(0, 0.5);
+
+    // Test queue functions modifying queue
+    await queueAudio('test2.mp3', 0);
+
+    // Test event subscription functions modifying callback properties
+    const mockCallback = jest.fn();
+    onAudioStart(0, mockCallback);
+    onAudioComplete(0, mockCallback);
+    onAudioPause(0, mockCallback);
+    onAudioResume(0, mockCallback);
+    onQueueChange(0, mockCallback);
+    onAudioProgress(0, mockCallback);
+
+    // Test event unsubscription functions modifying callback properties
+    offAudioStart(0);
+    offAudioComplete(0);
+    offAudioPause(0);
+    offAudioResume(0);
+    offQueueChange(0);
+    offAudioProgress(0);
+
+    // Test queue limit functions modifying maxQueueSize
+    setChannelQueueLimit(0, 10);
+
+    // Verify no warnings were triggered by legitimate API usage
+    expect(mockConsoleWarn).not.toHaveBeenCalledWith(
+      expect.stringContaining('Warning: Direct modification of channel.')
+    );
+  });
+
+  it('should warn when properties are modified directly (not through API)', () => {
+    // Ensure channel exists
+    audioChannels[0] = audioChannels[0] || {
+      audioCompleteCallbacks: new Set(),
+      audioErrorCallbacks: new Set(),
+      audioPauseCallbacks: new Set(),
+      audioResumeCallbacks: new Set(),
+      audioStartCallbacks: new Set(),
+      isPaused: false,
+      progressCallbacks: new Map(),
+      queue: [],
+      queueChangeCallbacks: new Set(),
+      volume: 1.0
+    };
+
+    // Test direct modification of a non-whitelisted property
+    (audioChannels[0] as unknown as Record<string, unknown>).customProperty = 'test-value';
+
+    // Verify warning was triggered
+    const expectedWarning =
+      'Warning: Direct modification of channel.customProperty detected. ' +
+      'Use API functions for safer channel management.';
+    expect(mockConsoleWarn).toHaveBeenCalledWith(expectedWarning);
+  });
+
+  describe('Automated Whitelist System', () => {
+    it('should generate a reasonable whitelist automatically', () => {
+      const whitelistedProperties = getWhitelistedChannelProperties();
+
+      // Verify the whitelist is generated dynamically (not empty, not suspiciously large)
+      expect(Array.isArray(whitelistedProperties)).toBe(true);
+      expect(whitelistedProperties.length).toBeGreaterThan(5); // At least some core properties
+      expect(whitelistedProperties.length).toBeLessThan(20); // Not suspiciously large
+
+      // Verify it includes essential properties that must exist for the system to work
+      expect(whitelistedProperties).toContain('queue'); // Core functionality
+      expect(whitelistedProperties).toContain('volume'); // Core functionality
+      expect(whitelistedProperties).toContain('isPaused'); // Core functionality
+      expect(whitelistedProperties).toContain('fadeState'); // The original issue we fixed
+    });
+
+    it('should prevent warnings for all whitelisted properties automatically', () => {
+      // Ensure channel exists
+      audioChannels[0] = {
+        audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+      };
+
+      mockConsoleWarn.mockClear();
+
+      // Get the current whitelist dynamically
+      const whitelistedProperties = getWhitelistedChannelProperties();
+
+      // Test modification of each whitelisted property
+      const channel = audioChannels[0] as unknown as Record<string, unknown>;
+      whitelistedProperties.forEach((prop) => {
+        channel[prop] = `test-value-for-${prop}`;
+      });
+
+      // Verify no warnings were triggered for any whitelisted property
+      expect(mockConsoleWarn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Warning: Direct modification of channel.')
+      );
+    });
+
+    it('should continue to warn for unknown/custom properties', () => {
+      // Ensure channel exists
+      audioChannels[0] = {
+        audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+      };
+
+      mockConsoleWarn.mockClear();
+
+      // Test a property that definitely isn't in the interface
+      const testPropertyName = 'definitelyNotInInterface_' + Date.now();
+      const channel = audioChannels[0] as unknown as Record<string, unknown>;
+
+      // This property should NOT be whitelisted since it's completely custom
+      channel[testPropertyName] = 'test-value';
+
+      // Should trigger exactly one warning
+      const warningStart = `Warning: Direct modification of channel.${testPropertyName} detected. `;
+      const expectedWarning = warningStart + 'Use API functions for safer channel management.';
+      expect(mockConsoleWarn).toHaveBeenCalledWith(expectedWarning);
+      expect(mockConsoleWarn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should work correctly when interface properties are added/modified', () => {
+      // This test simulates what happens when the interface changes
+      // The system should automatically adapt without requiring manual updates
+
+      const whitelistedProperties = getWhitelistedChannelProperties();
+
+      // Create a channel with some properties
+      audioChannels[0] = {
+        audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+      };
+
+      mockConsoleWarn.mockClear();
+
+      // Test that any property currently in the whitelist doesn't trigger warnings
+      const channel = audioChannels[0] as unknown as Record<string, unknown>;
+
+      // Pick a few properties from the current whitelist and verify they don't warn
+      const sampleProperties = whitelistedProperties.slice(0, 3);
+      sampleProperties.forEach((prop) => {
+        channel[prop] = 'test-value';
+      });
+
+      // Should not have triggered any warnings
+      expect(mockConsoleWarn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getNonWhitelistedChannelProperties', () => {
+    it('should correctly identify whitelisted vs non-whitelisted properties', () => {
+      // Create a channel
+      audioChannels[0] = {
+        audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+      };
+
+      const channel = audioChannels[0] as unknown as Record<string, unknown>;
+      const whitelistedProperties = getWhitelistedChannelProperties();
+
+      // Dynamically add some properties that are guaranteed to NOT be in the whitelist
+      const testNonWhitelistedProps = ['testProp_A', 'testProp_B', 'testProp_C'];
+      testNonWhitelistedProps.forEach((prop) => {
+        // Ensure these aren't accidentally whitelisted
+        expect(whitelistedProperties).not.toContain(prop);
+        channel[prop] = 'test-value';
+      });
+
+      mockConsoleWarn.mockClear();
+      const nonWhitelistedProperties = getNonWhitelistedChannelProperties(0);
+
+      // Test 1: Iterating through ALL whitelisted properties should produce no warnings
+      whitelistedProperties.forEach((prop) => {
+        channel[prop] = 'test-value';
+      });
+      expect(mockConsoleWarn).not.toHaveBeenCalled();
+
+      // Test 2: Iterating through ALL non-whitelisted properties should produce warnings for each
+      mockConsoleWarn.mockClear();
+      nonWhitelistedProperties.forEach((prop) => {
+        channel[prop] = 'test-value';
+      });
+      expect(mockConsoleWarn).toHaveBeenCalledTimes(nonWhitelistedProperties.length);
+
+      // Verify our test properties were correctly categorized
+      expect(nonWhitelistedProperties).toEqual(expect.arrayContaining(testNonWhitelistedProps));
+    });
+
+    it('should return empty array for non-existent channel and handle edge cases', () => {
+      // Non-existent channel
+      expect(getNonWhitelistedChannelProperties(999)).toEqual([]);
+
+      // Default parameter (channel 0)
+      audioChannels[0] = {
+        audioCompleteCallbacks: new Set(),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set(),
+        audioResumeCallbacks: new Set(),
+        audioStartCallbacks: new Set(),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set(),
+        volume: 1.0
+      };
+
+      const channel = audioChannels[0] as unknown as Record<string, unknown>;
+      channel.testProp = 'test-value';
+
+      expect(getNonWhitelistedChannelProperties()).toEqual(getNonWhitelistedChannelProperties(0));
+      expect(getNonWhitelistedChannelProperties()).toContain('testProp');
+    });
   });
 });

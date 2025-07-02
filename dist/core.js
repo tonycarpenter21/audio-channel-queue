@@ -279,12 +279,8 @@ const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...
     (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);
     // Start playing if this is the first item and channel isn't paused
     if (channel.queue.length === 1 && !channel.isPaused) {
-        // Use setTimeout to ensure the queue change event is emitted first
-        setTimeout(() => {
-            (0, exports.playAudioQueue)(channelNumber).catch((error) => {
-                (0, errors_1.handleAudioError)(audio, channelNumber, validatedUrl, error);
-            });
-        }, 0);
+        // Await the audio setup to complete before resolving queueAudio
+        yield (0, exports.playAudioQueue)(channelNumber);
     }
 });
 exports.queueAudio = queueAudio;
@@ -309,10 +305,10 @@ exports.queueAudioPriority = queueAudioPriority;
 /**
  * Plays the audio queue for a specific channel
  * @param channelNumber - The channel number to play
- * @returns Promise that resolves when the current audio finishes playing
+ * @returns Promise that resolves when the audio starts playing (setup complete)
  * @example
  * ```typescript
- * await playAudioQueue(0); // Play queue for channel 0
+ * await playAudioQueue(0); // Start playing queue for channel 0
  * ```
  */
 const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, function* () {
@@ -331,6 +327,7 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
         let hasStarted = false;
         let metadataLoaded = false;
         let playStarted = false;
+        let setupComplete = false;
         // Check if we should fire onAudioStart (both conditions met)
         const tryFireAudioStart = () => {
             if (!hasStarted && metadataLoaded && playStarted) {
@@ -341,6 +338,11 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
                     fileName: (0, utils_1.extractFileName)(currentAudio.src),
                     src: currentAudio.src
                 }, info_1.audioChannels);
+                // Resolve setup promise when audio start event is fired
+                if (!setupComplete) {
+                    setupComplete = true;
+                    resolve();
+                }
             }
         };
         // Event handler for when metadata loads (duration becomes available)
@@ -371,7 +373,6 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
                 catch (error) {
                     yield (0, errors_1.handleAudioError)(currentAudio, channelNumber, currentAudio.src, error);
                 }
-                resolve();
             }
             else {
                 // For non-looping audio, remove from queue and play next
@@ -384,7 +385,6 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
                 (0, events_1.emitQueueChange)(channelNumber, info_1.audioChannels);
                 // Play next audio immediately if there's more in queue
                 yield (0, exports.playAudioQueue)(channelNumber);
-                resolve();
             }
         });
         // Add event listeners
@@ -398,7 +398,10 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
         // Enhanced play with error handling
         currentAudio.play().catch((error) => __awaiter(void 0, void 0, void 0, function* () {
             yield (0, errors_1.handleAudioError)(currentAudio, channelNumber, currentAudio.src, error);
-            resolve(); // Resolve to prevent hanging
+            if (!setupComplete) {
+                setupComplete = true;
+                resolve(); // Resolve gracefully instead of rejecting
+            }
         }));
     });
 });

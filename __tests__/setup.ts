@@ -241,17 +241,6 @@ export const toMockAudioElement = (htmlAudio: HTMLAudioElement): MockAudioElemen
   return htmlAudio as unknown as MockAudioElement;
 };
 
-export const waitForPromises = async (maxWait: number = 100): Promise<void> => {
-  const start = Date.now();
-
-  // Multiple cycles to ensure all promises resolve - jsdom compatible
-  while (Date.now() - start < maxWait) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    // Use setTimeout instead of setImmediate for jsdom compatibility
-    await new Promise<void>((resolve) => setTimeout(resolve, 1));
-  }
-};
-
 export const waitForAudioEvents = async (timeout: number = 50): Promise<void> => {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, timeout);

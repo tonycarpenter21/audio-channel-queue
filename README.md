@@ -363,9 +363,21 @@ onAudioStart(0, (info) => console.log(`Started: ${info.fileName}`)); // Log audi
 ```
 
 ```typescript
+// Unsubscribe from audio start events (removes ALL start callbacks for the channel)
+offAudioStart(channelNumber);
+offAudioStart(0); // Stop receiving all start notifications for channel 0
+```
+
+```typescript
 // Subscribe to audio completion events.
 onAudioComplete(channelNumber, callback);
 onAudioComplete(0, (info) => logPlayHistory(info)); // Track completed audio
+```
+
+```typescript
+// Unsubscribe from audio completion events (removes ALL complete callbacks for the channel)
+offAudioComplete(channelNumber);
+offAudioComplete(0); // Stop receiving all completion notifications for channel 0
 ```
 
 ```typescript

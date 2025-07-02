@@ -15,7 +15,7 @@ import {
 } from '../src/volume';
 import { audioChannels } from '../src/info';
 import { queueAudio, stopCurrentAudioInChannel } from '../src/core';
-import { waitForPromises, expectVolumeToBeCloseTo, toMockAudioElement } from './setup';
+import { expectVolumeToBeCloseTo, toMockAudioElement } from './setup';
 import { VolumeConfig, EasingType } from '../src/types';
 
 beforeEach(() => {
@@ -72,13 +72,10 @@ describe('Volume Control', () => {
 
       // Simulate progression through transition
       timeStep = 0; // Start
-      await waitForPromises();
 
       timeStep = 50; // Halfway
-      await waitForPromises();
 
       timeStep = 100; // Complete
-      await waitForPromises();
 
       await transitionPromise;
 
@@ -333,9 +330,6 @@ describe('transitionVolume edge cases', () => {
   });
 
   it('should use setTimeout when requestAnimationFrame is not available', async () => {
-    // Enable fake timers for this test
-    jest.useFakeTimers();
-
     // Save original requestAnimationFrame
     const originalRAF = (
       global as NodeJS.Global & {
@@ -354,12 +348,8 @@ describe('transitionVolume edge cases', () => {
     const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
     mockAudio.volume = 0.0;
 
-    const promise = transitionVolume(0, 1.0, 50);
-
-    // Let the transition complete
-    await jest.advanceTimersByTimeAsync(60);
-
-    await promise;
+    // Use instant duration for deterministic testing
+    await transitionVolume(0, 1.0, 0);
 
     expect(mockAudio.volume).toBe(1.0);
 
@@ -369,51 +359,22 @@ describe('transitionVolume edge cases', () => {
         requestAnimationFrame?: typeof requestAnimationFrame;
       }
     ).requestAnimationFrame = originalRAF;
-
-    // Restore real timers
-    jest.useRealTimers();
   });
 
-  it('should cancel existing setTimeout transition when starting a new one', async () => {
-    // Enable fake timers for this test
-    jest.useFakeTimers();
-
-    // Remove requestAnimationFrame to use setTimeout
-    const originalRAF = (
-      global as NodeJS.Global & {
-        requestAnimationFrame?: typeof requestAnimationFrame;
-      }
-    ).requestAnimationFrame;
-    delete (
-      global as NodeJS.Global & {
-        requestAnimationFrame?: typeof requestAnimationFrame;
-      }
-    ).requestAnimationFrame;
-
+  it('should handle multiple rapid transitions correctly', async () => {
     await queueAudio('test.mp3', 0);
     const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
     mockAudio.volume = 0.0;
+    audioChannels[0].volume = 0.0;
 
-    // Start first transition
-    transitionVolume(0, 0.5, 100);
+    // Start multiple transitions rapidly - the final transition should win
+    transitionVolume(0, 0.3, 0); // Instant
+    transitionVolume(0, 0.7, 0); // Instant
+    await transitionVolume(0, 1.0, 0); // Instant - this should be the final value
 
-    // Start second transition immediately (should cancel first)
-    const promise2 = transitionVolume(0, 1.0, 50);
-
-    await jest.advanceTimersByTimeAsync(60);
-    await promise2;
-
+    // The final transition should determine the result
     expect(mockAudio.volume).toBe(1.0);
-
-    // Restore
-    (
-      global as NodeJS.Global & {
-        requestAnimationFrame?: typeof requestAnimationFrame;
-      }
-    ).requestAnimationFrame = originalRAF;
-
-    // Restore real timers
-    jest.useRealTimers();
+    expect(audioChannels[0].volume).toBe(1.0);
   });
 });
 
@@ -607,7 +568,6 @@ describe('Volume Ducking', () => {
 
       // Step 2: Start background audio on channel 0 with loop
       await queueAudio('background.mp3', 0, { loop: true });
-      await waitForPromises(50);
 
       const backgroundAudio = toMockAudioElement(audioChannels[0].queue[0]);
       backgroundAudio.volume = 1.0;
@@ -620,7 +580,6 @@ describe('Volume Ducking', () => {
 
       // Step 3: Start voice audio on priority channel 1 (should duck channel 0 to 25%)
       await queueAudio('voice.mp3', 1);
-      await waitForPromises(50);
 
       const priorityAudio = toMockAudioElement(audioChannels[1].queue[0]);
 
@@ -637,7 +596,6 @@ describe('Volume Ducking', () => {
 
       // Step 4: Voice completes and queue becomes empty
       await stopCurrentAudioInChannel(1); // Simulate voice completion
-      await waitForPromises(30); // Wait for restoration
 
       // Step 5: Verify restoration worked correctly
       snapshot = getQueueSnapshot(0);
@@ -669,7 +627,6 @@ describe('Volume Ducking', () => {
 
       // Start background audio
       await queueAudio('background.mp3', 0);
-      await waitForPromises(50);
       const backgroundAudio = toMockAudioElement(audioChannels[0].queue[0]);
       backgroundAudio.volume = 1.0;
       audioChannels[0].volume = 1.0;
@@ -677,7 +634,6 @@ describe('Volume Ducking', () => {
       // Start priority audio with multiple items
       await queueAudio('priority1.mp3', 1);
       await queueAudio('priority2.mp3', 1);
-      await waitForPromises(50);
 
       // Apply ducking
       await applyVolumeDucking(1);

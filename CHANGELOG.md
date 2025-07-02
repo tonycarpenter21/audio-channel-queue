@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.11.0] - 2025-01-16
+
+### Added - Complete Event System API Coverage 🎵
+- **🎧 Missing Event Cleanup Functions**: Added complementing "off" functions for complete event management
+  - `offAudioStart(channelNumber)` - Remove audio start event listeners for a specific channel
+  - `offAudioComplete(channelNumber)` - Remove audio complete event listeners for a specific channel
+  - **API Consistency**: Now every "on" event function has a corresponding "off" function for cleanup
+
+### Changed - Enhanced Event System Completeness
+- **Full Event Lifecycle Management**: Event subscription system now provides complete control over all audio lifecycle events
+  - Start events: `onAudioStart` / `offAudioStart`
+  - Complete events: `onAudioComplete` / `offAudioComplete`  
+  - Pause events: `onAudioPause` / `offAudioPause`
+  - Resume events: `onAudioResume` / `offAudioResume`
+  - Progress events: `onAudioProgress` / `offAudioProgress`
+  - Queue events: `onQueueChange` / `offQueueChange`
+  - Error events: `onAudioError` / `offAudioError`
+
+### Technical Improvements
+- **Comprehensive Test Coverage**: Added full test suite for new functions including edge cases
+  - Non-existent channel handling
+  - Undefined callback set management  
+  - Selective callback clearing (only affects target callbacks, preserves others)
+  - Cross-channel isolation testing
+- Added tests to validate the warning system for direct modification of channels
+- Removed set timeouts from testing
+
 ## [1.10.0] - 2025-01-16
 
 ### Added - Advanced Queue Manipulation System 🎵

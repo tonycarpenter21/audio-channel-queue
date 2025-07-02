@@ -14,7 +14,7 @@ import {
   setQueueConfig
 } from '../src/core';
 import { audioChannels } from '../src/info';
-import { toMockAudioElement, waitForPromises } from './setup';
+import { toMockAudioElement } from './setup';
 
 // Clear modules before each test to reset state
 beforeEach(() => {
@@ -48,9 +48,6 @@ describe('Core Queue Management', () => {
     it("should start playing if it's the first audio in the queue", async () => {
       await queueAudio('test.mp3');
 
-      // Wait for async playback to start
-      await waitForPromises(50);
-
       const audioElement = toMockAudioElement(audioChannels[0].queue[0]);
       expect(audioElement.play).toHaveBeenCalled();
     });
@@ -78,9 +75,6 @@ describe('Core Queue Management', () => {
     it('should play the current audio in the queue', async () => {
       await queueAudio('test.mp3');
 
-      // Wait for async playback to start
-      await waitForPromises(50);
-
       const audioElement = toMockAudioElement(audioChannels[0].queue[0]);
       expect(audioElement.play).toHaveBeenCalled();
     });
@@ -94,9 +88,6 @@ describe('Core Queue Management', () => {
       await queueAudio('test1.mp3');
       await queueAudio('test2.mp3');
 
-      // Wait for first audio to start
-      await waitForPromises(50);
-
       const originalSecondAudio = toMockAudioElement(audioChannels[0].queue[1]);
 
       // Verify initial state
@@ -104,9 +95,6 @@ describe('Core Queue Management', () => {
 
       // Use stopCurrentAudioInChannel which should trigger next audio
       await stopCurrentAudioInChannel(0);
-
-      // Wait for async operations
-      await waitForPromises(20);
 
       // After stopping current, check the state
       const currentAudio = toMockAudioElement(audioChannels[0].queue[0]);
@@ -139,9 +127,6 @@ describe('Core Queue Management', () => {
       const secondAudio = toMockAudioElement(audioChannels[0].queue[1]);
 
       await stopCurrentAudioInChannel(0);
-
-      // Wait for async playback to start
-      await waitForPromises(20);
 
       expect(secondAudio.play).toHaveBeenCalled();
     });
@@ -250,9 +235,6 @@ describe('Core Queue Management', () => {
       // handleAudioError should be called when play fails
       await queueAudio('test.mp3', 0);
 
-      // Wait for async play to happen
-      await waitForPromises(50);
-
       // Restore original Audio constructor
       global.Audio = originalAudio;
     });
@@ -270,9 +252,6 @@ describe('Core Queue Management', () => {
       global.Audio = jest.fn().mockImplementation(() => mockAudio) as unknown as typeof Audio;
 
       await queueAudio('test.mp3', 0);
-
-      // The metadataLoaded flag should be set immediately
-      await waitForPromises(50);
 
       global.Audio = originalAudio;
     });
@@ -300,14 +279,8 @@ describe('Core Queue Management', () => {
         }
       });
 
-      // Wait for initial play
-      await waitForPromises(50);
-
       // Simulate audio ending
       mockAudio.simulateEnded();
-
-      // Wait for loop attempt
-      await waitForPromises(50);
 
       // Audio should still be in queue (loop doesn't remove it)
       expect(audioChannels[0].queue.length).toBe(1);
@@ -337,9 +310,6 @@ describe('Core Queue Management', () => {
       global.Audio = jest.fn().mockImplementation(() => mockAudio) as unknown as typeof Audio;
 
       await queueAudio('test.mp3', 0);
-
-      // Wait for the error to be handled
-      await waitForPromises(50);
 
       global.Audio = originalAudio;
     });

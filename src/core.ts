@@ -320,12 +320,8 @@ export const queueAudio = async (
 
   // Start playing if this is the first item and channel isn't paused
   if (channel.queue.length === 1 && !channel.isPaused) {
-    // Use setTimeout to ensure the queue change event is emitted first
-    setTimeout(() => {
-      playAudioQueue(channelNumber).catch((error: Error) => {
-        handleAudioError(audio, channelNumber, validatedUrl, error);
-      });
-    }, 0);
+    // Await the audio setup to complete before resolving queueAudio
+    await playAudioQueue(channelNumber);
   }
 };
 
@@ -354,10 +350,10 @@ export const queueAudioPriority = async (
 /**
  * Plays the audio queue for a specific channel
  * @param channelNumber - The channel number to play
- * @returns Promise that resolves when the current audio finishes playing
+ * @returns Promise that resolves when the audio starts playing (setup complete)
  * @example
  * ```typescript
- * await playAudioQueue(0); // Play queue for channel 0
+ * await playAudioQueue(0); // Start playing queue for channel 0
  * ```
  */
 export const playAudioQueue = async (channelNumber: number): Promise<void> => {
@@ -381,6 +377,7 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
     let hasStarted: boolean = false;
     let metadataLoaded: boolean = false;
     let playStarted: boolean = false;
+    let setupComplete: boolean = false;
 
     // Check if we should fire onAudioStart (both conditions met)
     const tryFireAudioStart = (): void => {
@@ -396,6 +393,12 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
           },
           audioChannels
         );
+
+        // Resolve setup promise when audio start event is fired
+        if (!setupComplete) {
+          setupComplete = true;
+          resolve();
+        }
       }
     };
 
@@ -433,7 +436,6 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
         } catch (error) {
           await handleAudioError(currentAudio, channelNumber, currentAudio.src, error as Error);
         }
-        resolve();
       } else {
         // For non-looping audio, remove from queue and play next
         currentAudio.pause();
@@ -448,7 +450,6 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
 
         // Play next audio immediately if there's more in queue
         await playAudioQueue(channelNumber);
-        resolve();
       }
     };
 
@@ -465,7 +466,10 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
     // Enhanced play with error handling
     currentAudio.play().catch(async (error: Error) => {
       await handleAudioError(currentAudio, channelNumber, currentAudio.src, error);
-      resolve(); // Resolve to prevent hanging
+      if (!setupComplete) {
+        setupComplete = true;
+        resolve(); // Resolve gracefully instead of rejecting
+      }
     });
   });
 };

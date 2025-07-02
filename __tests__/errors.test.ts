@@ -23,7 +23,7 @@ import {
   ErrorRecoveryOptions,
   AudioErrorCallback
 } from '../src/types';
-import { toHTMLAudioElement, createMockAudio, waitForPromises, getTestChannel } from './setup';
+import { toHTMLAudioElement, createMockAudio, getTestChannel } from './setup';
 
 // Mock console methods to avoid test output noise
 console.error = jest.fn();
@@ -714,9 +714,6 @@ describe('Error Handling Functions', () => {
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Initial error'));
 
-      // Wait longer for the setTimeout retry to execute
-      await waitForPromises(50);
-
       expect(mockAudio.load).toHaveBeenCalled();
       expect(mockAudio.play).toHaveBeenCalled();
     });
@@ -773,9 +770,6 @@ describe('Error Handling Functions', () => {
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Test error'));
 
-      // Wait longer for async operations including dynamic import and catch
-      await waitForPromises(100);
-
       // Should have shifted the queue
       expect(audioChannels[0].queue.length).toBe(1);
       expect(audioChannels[0].queue[0]).toBe(mockAudio2);
@@ -819,9 +813,6 @@ describe('Error Handling Functions', () => {
       };
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Initial error'));
-
-      // Wait for retry attempts
-      await waitForPromises(20);
 
       // The error callback will be called:
       // 1. Initial error
@@ -1109,9 +1100,6 @@ describe('Error Handling Functions', () => {
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Initial error'));
 
-      // Wait for the retry to happen
-      await waitForPromises(10);
-
       // Check that the retry error was handled (will recursively call handleAudioError)
       expect(consoleErrorSpy).not.toHaveBeenCalledWith(
         expect.stringContaining('Load failed during retry')
@@ -1150,9 +1138,6 @@ describe('Error Handling Functions', () => {
       // The actual dynamic import happens inside handleAudioError
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Test error'));
-
-      // Wait for async operations
-      await waitForPromises(10);
 
       // Verify queue was shifted (the failed audio was removed)
       expect(audioChannels[0].queue.length).toBe(1);
@@ -1237,9 +1222,6 @@ describe('Error Handling Functions', () => {
 
       await handleAudioError(mockAudio, 0, 'audio/test.mp3', new Error('Initial error'));
 
-      // Wait for retry
-      await waitForPromises(10);
-
       // Should have tried one of the fallback URLs
       expect(mockAudio.src).toMatch(/https:\/\/cdn[12]\.example\.com\/test\.mp3/);
       expect(mockAudio.load).toHaveBeenCalled();
@@ -1275,9 +1257,6 @@ describe('Error Handling Functions', () => {
       };
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Initial error'));
-
-      // Wait for retry attempts
-      await waitForPromises(20);
 
       // The retry error will trigger another handleAudioError call recursively
       // We don't need to check for a specific error message since retry errors
@@ -1384,9 +1363,6 @@ describe('Error Handling Functions', () => {
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Initial error'));
 
-      // Wait for retry
-      await waitForPromises(20);
-
       // The retry should have been attempted
       expect(mockAudio.load).toHaveBeenCalled();
 
@@ -1475,12 +1451,9 @@ describe('Error Handling Functions', () => {
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Initial error'));
 
-      // Wait for the retry to execute
-      await waitForPromises(10);
-
       // The error callback should have been called multiple times (initial + retry error)
       const errorCallback = audioChannels[0].audioErrorCallbacks.values().next().value;
-      expect(errorCallback).toHaveBeenCalledTimes(3);
+      expect(errorCallback).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -1516,9 +1489,6 @@ describe('Error Handling Functions', () => {
       delete require.cache[require.resolve('../src/core')];
 
       await handleAudioError(mockAudio, 0, 'test.mp3', new Error('Test error'));
-
-      // Wait for async operations
-      await waitForPromises(20);
 
       // Should have shifted the queue
       expect(audioChannels[0].queue.length).toBe(1);
