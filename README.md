@@ -75,8 +75,8 @@ Install this package by running either of these commands (typescript packages ar
 ```typescript
 // Add an audio file to the queue and start playing it automatically.
 queueAudio(audioUrl, channelNumber?, options?);
-queueAudio('hello.mp3'); // Add to default channel 0
-queueAudio('laser.mp3', 1, { loop: true, volume: 0.8 }); // Add to channel 1 with options
+await queueAudio('hello.mp3'); // Add to default channel 0
+await queueAudio('laser.mp3', 1, { loop: true, volume: 0.8 }); // Add to channel 1 with options
 ```
 
 
@@ -84,8 +84,8 @@ queueAudio('laser.mp3', 1, { loop: true, volume: 0.8 }); // Add to channel 1 wit
 ```typescript
 // Add a file to the front of the queue (plays after current audio finishes).
 queueAudioPriority(audioUrl, channelNumber?, options?);
-queueAudioPriority('urgent.mp3'); // Add to front of default channel 0
-queueAudioPriority('announcement.mp3', 1, { volume: 1.0 }); // Add to front of channel 1
+await queueAudioPriority('urgent.mp3'); // Add to front of default channel 0
+await queueAudioPriority('announcement.mp3', 1, { volume: 1.0 }); // Add to front of channel 1
 ```
 
 
@@ -93,8 +93,8 @@ queueAudioPriority('announcement.mp3', 1, { volume: 1.0 }); // Add to front of c
 ```typescript
 // Stop the current audio and automatically start playing the next one in queue.
 stopCurrentAudioInChannel(channelNumber?);
-stopCurrentAudioInChannel(); // Stop current audio in default channel (0)
-stopCurrentAudioInChannel(2); // Stop current audio in channel 2
+await stopCurrentAudioInChannel(); // Stop current audio in default channel (0)
+await stopCurrentAudioInChannel(2); // Stop current audio in channel 2
 ```
 
 
@@ -102,14 +102,14 @@ stopCurrentAudioInChannel(2); // Stop current audio in channel 2
 ```typescript
 // Stop all audio in a channel and remove all enqueued files.
 stopAllAudioInChannel(channelNumber?);
-stopAllAudioInChannel(); // Stop and clear all audio in default channel (0)
-stopAllAudioInChannel(1); // Stop and clear all audio in channel 1
+await stopAllAudioInChannel(); // Stop and clear all audio in default channel (0)
+await stopAllAudioInChannel(1); // Stop and clear all audio in channel 1
 ```
 
 ### Stop All Audio
 ```typescript
 // Stop all audio in all channels and remove all enqueued files.
-stopAllAudio();
+await stopAllAudio();
 ```
 
 ## 🔄 Advanced Queue Manipulation:
@@ -118,32 +118,32 @@ stopAllAudio();
 ```typescript
 // Remove a specific item from the queue by its position (cannot remove currently playing item at index 0).
 removeQueuedItem(queuedSlotNumber, channelNumber?);
-const result = removeQueuedItem(2); // Remove item at index 2 from default channel (0)
-const result = removeQueuedItem(1, 1); // Remove item at index 1 from channel 1
+const result = await removeQueuedItem(2); // Remove item at index 2 from default channel (0)
+const result = await removeQueuedItem(1, 1); // Remove item at index 1 from channel 1
 ```
 
 ### Reorder Queue Items
 ```typescript
 // Move a queue item from one position to another (cannot move currently playing item at index 0).
 reorderQueue(currentQueuedSlotNumber, newQueuedSlotNumber, channelNumber?);
-const result = reorderQueue(3, 1); // Move item from index 3 to index 1 in default channel (0)
-const result = reorderQueue(2, 4, 1); // Move item from index 2 to index 4 in channel 1
+const result = await reorderQueue(3, 1); // Move item from index 3 to index 1 in default channel (0)
+const result = await reorderQueue(2, 4, 1); // Move item from index 2 to index 4 in channel 1
 ```
 
 ### Clear Queue After Current
 ```typescript
 // Remove all items from the queue except the currently playing audio.
 clearQueueAfterCurrent(channelNumber?);
-const result = clearQueueAfterCurrent(); // Clear queue after current in default channel (0)
-const result = clearQueueAfterCurrent(2); // Clear queue after current in channel 2
+const result = await clearQueueAfterCurrent(); // Clear queue after current in default channel (0)
+const result = await clearQueueAfterCurrent(2); // Clear queue after current in channel 2
 ```
 
 ### Swap Queue Items
 ```typescript
 // Swap the positions of two items in the queue (cannot involve currently playing item at index 0).
 swapQueueItems(firstQueuedSlotNumber, secondQueuedSlotNumber, channelNumber?);
-const result = swapQueueItems(1, 3); // Swap items at index 1 and 3 in default channel (0)
-const result = swapQueueItems(2, 4, 1); // Swap items at index 2 and 4 in channel 1
+const result = await swapQueueItems(1, 3); // Swap items at index 1 and 3 in default channel (0)
+const result = await swapQueueItems(2, 4, 1); // Swap items at index 2 and 4 in channel 1
 ```
 
 ### Get Queue Item Info
@@ -177,8 +177,8 @@ interface QueueManipulationResult {
 ```typescript
 // Set the volume for a specific channel (0-1 range).
 setChannelVolume(channelNumber, volume);
-setChannelVolume(0, 0.5); // Set channel 0 to 50% volume
-setChannelVolume(1, 0.8); // Set channel 1 to 80% volume
+await setChannelVolume(0, 0.5); // Set channel 0 to 50% volume
+await setChannelVolume(1, 0.8); // Set channel 1 to 80% volume
 ```
 
 ### Get Channel Volume
@@ -193,8 +193,8 @@ console.log(`Channel volume: ${(getChannelVolume(2) * 100).toFixed(0)}%`); // Ge
 ```typescript
 // Set the same volume level for all channels.
 setAllChannelsVolume(volume);
-setAllChannelsVolume(0.6); // Set all channels to 60% volume
-setAllChannelsVolume(0.0); // Mute all channels
+await setAllChannelsVolume(0.6); // Set all channels to 60% volume
+await setAllChannelsVolume(0.0); // Mute all channels
 ```
 
 ### Volume Ducking (Background Audio Reduction)

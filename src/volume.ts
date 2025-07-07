@@ -430,7 +430,7 @@ export const restoreVolumeLevels = async (stoppedChannelNumber: number): Promise
     }
 
     // Restore this channel to its desired volume
-    const duration = config.restoreTransitionDuration ?? 500;
+    const duration = config.restoreTransitionDuration ?? 250;
     const easing = config.transitionEasing ?? EasingType.EaseOut;
     const targetVolume = channel.volume ?? 1.0;
 

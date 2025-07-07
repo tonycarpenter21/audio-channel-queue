@@ -29,15 +29,15 @@ export interface AudioQueueChannel {
  * Volume ducking configuration for channels
  */
 export interface VolumeConfig {
+  /** Duration in milliseconds for volume duck transition (defaults to 250ms) */
+  duckTransitionDuration?: number;
+  /** Volume level for all other channels when priority channel is active (0-1) */
+  duckingVolume: number;
   /** The channel number that should have priority */
   priorityChannel: number;
   /** Volume level for the priority channel (0-1) */
   priorityVolume: number;
-  /** Volume level for all other channels when priority channel is active (0-1) */
-  duckingVolume: number;
-  /** Duration in milliseconds for volume duck transition (defaults to 250ms) */
-  duckTransitionDuration?: number;
-  /** Duration in milliseconds for volume restore transition (defaults to 500ms) */
+  /** Duration in milliseconds for volume restore transition (defaults to 250ms) */
   restoreTransitionDuration?: number;
   /** Easing function for volume transitions (defaults to 'ease-out') */
   transitionEasing?: EasingType;
@@ -212,6 +212,19 @@ export type AudioPauseCallback = (channelNumber: number, audioInfo: AudioInfo) =
 export type AudioResumeCallback = (channelNumber: number, audioInfo: AudioInfo) => void;
 
 /**
+ * Types of audio errors that can occur during playback
+ */
+export enum AudioErrorType {
+  Abort = 'abort',
+  Decode = 'decode',
+  Network = 'network',
+  Permission = 'permission',
+  Timeout = 'timeout',
+  Unknown = 'unknown',
+  Unsupported = 'unsupported'
+}
+
+/**
  * Information about an audio error that occurred
  */
 export interface AudioErrorInfo {
@@ -219,7 +232,7 @@ export interface AudioErrorInfo {
   src: string;
   fileName: string;
   error: Error;
-  errorType: 'network' | 'decode' | 'unsupported' | 'permission' | 'abort' | 'timeout' | 'unknown';
+  errorType: AudioErrorType;
   timestamp: number;
   retryAttempt?: number;
   remainingInQueue: number;
@@ -229,13 +242,13 @@ export interface AudioErrorInfo {
  * Configuration for automatic retry behavior when audio fails to load or play
  */
 export interface RetryConfig {
-  enabled: boolean;
-  maxRetries: number;
   baseDelay: number;
+  enabled: boolean;
   exponentialBackoff: boolean;
-  timeoutMs: number;
-  fallbackUrls?: string[];
+  fallbackUrls: string[];
+  maxRetries: number;
   skipOnFailure: boolean;
+  timeoutMs: number;
 }
 
 /**
@@ -243,10 +256,10 @@ export interface RetryConfig {
  */
 export interface ErrorRecoveryOptions {
   autoRetry: boolean;
-  showUserFeedback: boolean;
+  fallbackToNextTrack: boolean;
   logErrorsToAnalytics: boolean;
   preserveQueueOnError: boolean;
-  fallbackToNextTrack: boolean;
+  showUserFeedback: boolean;
 }
 
 /**

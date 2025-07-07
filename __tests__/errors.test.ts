@@ -19,6 +19,7 @@ import {
 import { audioChannels } from '../src/info';
 import {
   AudioErrorInfo,
+  AudioErrorType,
   RetryConfig,
   ErrorRecoveryOptions,
   AudioErrorCallback
@@ -260,7 +261,7 @@ describe('Error Handling Functions', () => {
       const errorInfo: AudioErrorInfo = {
         channelNumber: 0,
         error: new Error('Test error'),
-        errorType: 'network',
+        errorType: AudioErrorType.Network,
         fileName: 'test.mp3',
         remainingInQueue: 0,
         src: 'test.mp3',
@@ -285,7 +286,7 @@ describe('Error Handling Functions', () => {
       const errorInfo: AudioErrorInfo = {
         channelNumber: 0,
         error: new Error('Test error'),
-        errorType: 'network',
+        errorType: AudioErrorType.Network,
         fileName: 'test.mp3',
         remainingInQueue: 0,
         src: 'test.mp3',
@@ -305,7 +306,7 @@ describe('Error Handling Functions', () => {
       const errorInfo: AudioErrorInfo = {
         channelNumber: 99,
         error: new Error('Test error'),
-        errorType: 'network',
+        errorType: AudioErrorType.Network,
         fileName: 'test.mp3',
         remainingInQueue: 0,
         src: 'test.mp3',
@@ -323,7 +324,7 @@ describe('Error Handling Functions', () => {
       const errorInfo: AudioErrorInfo = {
         channelNumber: 0,
         error: new Error('Test error'),
-        errorType: 'network',
+        errorType: AudioErrorType.Network,
         fileName: 'test.mp3',
         remainingInQueue: 0,
         retryAttempt: 0,
@@ -367,32 +368,32 @@ describe('Error Handling Functions', () => {
 
     it('should categorize network errors', () => {
       const error = new Error('Network request failed');
-      expect(categorizeError(error, mockAudio)).toBe('network');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Network);
     });
 
     it('should categorize decode errors', () => {
       const error = new Error('Failed to decode audio format');
-      expect(categorizeError(error, mockAudio)).toBe('decode');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Decode);
     });
 
     it('should categorize unsupported format errors', () => {
       const error = new Error('format not supported');
-      expect(categorizeError(error, mockAudio)).toBe('unsupported');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Unsupported);
     });
 
     it('should categorize permission errors', () => {
       const error = new Error('Audio playback blocked by user permission');
-      expect(categorizeError(error, mockAudio)).toBe('permission');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Permission);
     });
 
     it('should categorize abort errors', () => {
       const error = new Error('Audio loading was aborted');
-      expect(categorizeError(error, mockAudio)).toBe('abort');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Abort);
     });
 
     it('should categorize timeout errors', () => {
       const error = new Error('Request timeout exceeded');
-      expect(categorizeError(error, mockAudio)).toBe('timeout');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Timeout);
     });
 
     it('should categorize based on network state when message is unclear', () => {
@@ -402,7 +403,7 @@ describe('Error Handling Functions', () => {
       });
 
       const error = new Error('Generic error');
-      expect(categorizeError(error, mockAudio)).toBe('network');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Network);
     });
 
     it('should categorize network state NETWORK_EMPTY', () => {
@@ -412,7 +413,7 @@ describe('Error Handling Functions', () => {
       });
 
       const error = new Error('Generic error');
-      expect(categorizeError(error, mockAudio)).toBe('unknown'); // Matches actual implementation
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Unknown); // Matches actual implementation
     });
 
     it('should categorize network state NETWORK_LOADING as timeout', () => {
@@ -422,12 +423,12 @@ describe('Error Handling Functions', () => {
       });
 
       const error = new Error('Generic error');
-      expect(categorizeError(error, mockAudio)).toBe('timeout'); // Matches actual implementation
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Timeout); // Matches actual implementation
     });
 
     it('should default to unknown for unrecognized errors', () => {
       const error = new Error('Mysterious error');
-      expect(categorizeError(error, mockAudio)).toBe('unknown');
+      expect(categorizeError(error, mockAudio)).toBe(AudioErrorType.Unknown);
     });
   });
 
@@ -568,7 +569,7 @@ describe('Error Handling Functions', () => {
         expect.objectContaining({
           channelNumber: 0,
           error,
-          errorType: 'unknown',
+          errorType: AudioErrorType.Unknown,
           fileName: 'test.mp3',
           src: 'test.mp3'
         })
@@ -675,6 +676,7 @@ describe('Error Handling Functions', () => {
         baseDelay: 300,
         enabled: true,
         exponentialBackoff: false,
+        fallbackUrls: [],
         maxRetries: 5,
         skipOnFailure: false,
         timeoutMs: 2000
@@ -864,7 +866,7 @@ describe('Error Handling Functions', () => {
       const errorInfo: AudioErrorInfo = {
         channelNumber: 0,
         error,
-        errorType: 'network',
+        errorType: AudioErrorType.Network,
         fileName: 'test.mp3',
         remainingInQueue: 0,
         src: 'test.mp3',
@@ -884,7 +886,7 @@ describe('Error Handling Functions', () => {
       const errorInfo: AudioErrorInfo = {
         channelNumber: 0,
         error: new Error('Test error'),
-        errorType: 'network',
+        errorType: AudioErrorType.Network,
         fileName: 'test.mp3',
         remainingInQueue: 0,
         src: 'test.mp3',
@@ -906,7 +908,7 @@ describe('Error Handling Functions', () => {
       const errorInfo0: AudioErrorInfo = {
         channelNumber: 0,
         error: new Error('Channel 0 error'),
-        errorType: 'network',
+        errorType: AudioErrorType.Network,
         fileName: 'test0.mp3',
         remainingInQueue: 0,
         src: 'test0.mp3',
@@ -916,7 +918,7 @@ describe('Error Handling Functions', () => {
       const errorInfo1: AudioErrorInfo = {
         channelNumber: 1,
         error: new Error('Channel 1 error'),
-        errorType: 'decode',
+        errorType: AudioErrorType.Decode,
         fileName: 'test1.mp3',
         remainingInQueue: 1,
         src: 'test1.mp3',
@@ -1059,7 +1061,7 @@ describe('Error Handling Functions', () => {
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         'Audio Error Analytics:',
         expect.objectContaining({
-          errorType: 'unknown',
+          errorType: AudioErrorType.Unknown,
           fileName: 'test.mp3'
         })
       );

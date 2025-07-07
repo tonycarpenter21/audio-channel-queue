@@ -132,4 +132,11 @@ export type {
 } from './types';
 
 // Enums and constants
-export { EasingType, FadeType, MAX_CHANNELS, TimerType, GLOBAL_PROGRESS_KEY } from './types';
+export {
+  AudioErrorType,
+  EasingType,
+  FadeType,
+  MAX_CHANNELS,
+  TimerType,
+  GLOBAL_PROGRESS_KEY
+} from './types';

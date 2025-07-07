@@ -5,6 +5,7 @@
 import {
   AudioErrorInfo,
   AudioErrorCallback,
+  AudioErrorType,
   RetryConfig,
   ErrorRecoveryOptions,
   ExtendedAudioQueueChannel,
@@ -17,6 +18,7 @@ let globalRetryConfig: RetryConfig = {
   baseDelay: 1000,
   enabled: true,
   exponentialBackoff: true,
+  fallbackUrls: [],
   maxRetries: 3,
   skipOnFailure: false,
   timeoutMs: 10000
@@ -143,10 +145,10 @@ export const getRetryConfig = (): RetryConfig => {
  * ```typescript
  * setErrorRecovery({
  *   autoRetry: true,
- *   showUserFeedback: true,
+ *   fallbackToNextTrack: true,
  *   logErrorsToAnalytics: true,
  *   preserveQueueOnError: true,
- *   fallbackToNextTrack: true
+ *   showUserFeedback: true
  * });
  * ```
  */
@@ -247,14 +249,11 @@ export const emitAudioError = (
  * @returns The categorized error type
  * @internal
  */
-export const categorizeError = (
-  error: Error,
-  audio: HTMLAudioElement
-): AudioErrorInfo['errorType'] => {
+export const categorizeError = (error: Error, audio: HTMLAudioElement): AudioErrorType => {
   const errorMessage = error.message.toLowerCase();
 
   if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
-    return 'network';
+    return AudioErrorType.Network;
   }
 
   // Check for unsupported format first (more specific than decode)
@@ -263,35 +262,35 @@ export const categorizeError = (
     errorMessage.includes('unsupported') ||
     errorMessage.includes('format not supported')
   ) {
-    return 'unsupported';
+    return AudioErrorType.Unsupported;
   }
 
   if (errorMessage.includes('decode') || errorMessage.includes('format')) {
-    return 'decode';
+    return AudioErrorType.Decode;
   }
 
   if (errorMessage.includes('permission') || errorMessage.includes('blocked')) {
-    return 'permission';
+    return AudioErrorType.Permission;
   }
 
   if (errorMessage.includes('abort')) {
-    return 'abort';
+    return AudioErrorType.Abort;
   }
 
   if (errorMessage.includes('timeout')) {
-    return 'timeout';
+    return AudioErrorType.Timeout;
   }
 
   // Check audio element network state for more context
   if (audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
-    return 'network';
+    return AudioErrorType.Network;
   }
 
   if (audio.networkState === HTMLMediaElement.NETWORK_LOADING) {
-    return 'timeout';
+    return AudioErrorType.Timeout;
   }
 
-  return 'unknown';
+  return AudioErrorType.Unknown;
 };
 
 /**
