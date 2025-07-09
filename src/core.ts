@@ -12,11 +12,7 @@ import {
   setupProgressTracking,
   cleanupProgressTracking
 } from './events';
-import { 
-  applyVolumeDucking, 
-  restoreVolumeLevels, 
-  cancelVolumeTransition
-} from './volume';
+import { applyVolumeDucking, restoreVolumeLevels, cancelVolumeTransition } from './volume';
 import { setupAudioErrorHandling, handleAudioError } from './errors';
 
 /**

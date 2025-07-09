@@ -1147,17 +1147,17 @@ describe('Off Functions Channel 0 Fallback', () => {
   describe('offQueueChange', () => {
     it('should use channel 0 as default when no parameter provided', () => {
       expect(audioChannels[0].queueChangeCallbacks.size).toBe(1);
-      
+
       offQueueChange(); // No parameter - should default to channel 0
-      
+
       expect(audioChannels[0].queueChangeCallbacks.size).toBe(0);
     });
 
     it('should work the same way when explicitly passing channel 0', () => {
       expect(audioChannels[0].queueChangeCallbacks.size).toBe(1);
-      
+
       offQueueChange(0); // Explicit channel 0
-      
+
       expect(audioChannels[0].queueChangeCallbacks.size).toBe(0);
     });
 
@@ -1169,17 +1169,17 @@ describe('Off Functions Channel 0 Fallback', () => {
   describe('offAudioStart', () => {
     it('should use channel 0 as default when no parameter provided', () => {
       expect(audioChannels[0].audioStartCallbacks.size).toBe(1);
-      
+
       offAudioStart(); // No parameter - should default to channel 0
-      
+
       expect(audioChannels[0].audioStartCallbacks.size).toBe(0);
     });
 
     it('should work the same way when explicitly passing channel 0', () => {
       expect(audioChannels[0].audioStartCallbacks.size).toBe(1);
-      
+
       offAudioStart(0); // Explicit channel 0
-      
+
       expect(audioChannels[0].audioStartCallbacks.size).toBe(0);
     });
 
@@ -1191,17 +1191,17 @@ describe('Off Functions Channel 0 Fallback', () => {
   describe('offAudioComplete', () => {
     it('should use channel 0 as default when no parameter provided', () => {
       expect(audioChannels[0].audioCompleteCallbacks.size).toBe(2);
-      
+
       offAudioComplete(); // No parameter - should default to channel 0
-      
+
       expect(audioChannels[0].audioCompleteCallbacks.size).toBe(0);
     });
 
     it('should work the same way when explicitly passing channel 0', () => {
       expect(audioChannels[0].audioCompleteCallbacks.size).toBe(2);
-      
+
       offAudioComplete(0); // Explicit channel 0
-      
+
       expect(audioChannels[0].audioCompleteCallbacks.size).toBe(0);
     });
 
@@ -1213,17 +1213,17 @@ describe('Off Functions Channel 0 Fallback', () => {
   describe('offAudioPause', () => {
     it('should use channel 0 as default when no parameter provided', () => {
       expect(audioChannels[0].audioPauseCallbacks.size).toBe(1);
-      
+
       offAudioPause(); // No parameter - should default to channel 0
-      
+
       expect(audioChannels[0].audioPauseCallbacks.size).toBe(0);
     });
 
     it('should work the same way when explicitly passing channel 0', () => {
       expect(audioChannels[0].audioPauseCallbacks.size).toBe(1);
-      
+
       offAudioPause(0); // Explicit channel 0
-      
+
       expect(audioChannels[0].audioPauseCallbacks.size).toBe(0);
     });
 
@@ -1235,17 +1235,17 @@ describe('Off Functions Channel 0 Fallback', () => {
   describe('offAudioResume', () => {
     it('should use channel 0 as default when no parameter provided', () => {
       expect(audioChannels[0].audioResumeCallbacks.size).toBe(1);
-      
+
       offAudioResume(); // No parameter - should default to channel 0
-      
+
       expect(audioChannels[0].audioResumeCallbacks.size).toBe(0);
     });
 
     it('should work the same way when explicitly passing channel 0', () => {
       expect(audioChannels[0].audioResumeCallbacks.size).toBe(1);
-      
+
       offAudioResume(0); // Explicit channel 0
-      
+
       expect(audioChannels[0].audioResumeCallbacks.size).toBe(0);
     });
 
