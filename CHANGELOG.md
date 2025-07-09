@@ -16,6 +16,16 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - **Removed Unused Property**: Removed optional `fallbackUrls` property from `RetryConfig` interface
 
+### BREAKING CHANGES
+- **Removed deprecated `priority` property**: The `priority` property has been removed from `AudioQueueOptions` interface
+  - **Migration**: Use `addToFront: true` instead of `priority: true`
+  - **Reason**: API simplification - both properties did exactly the same thing
+  - **Alternative**: The `queueAudioPriority()` function remains available and unchanged
+- **Removed duplicate `fadeVolume` function**: The `fadeVolume` function has been removed as it was identical to `transitionVolume`
+  - **Migration**: Use `transitionVolume()` instead of `fadeVolume()` - same parameters and behavior
+  - **Reason**: API simplification - both functions did exactly the same thing
+  - **No functionality lost**: `transitionVolume` provides all the same capabilities
+
 ## [1.11.0] - 2025-01-16
 
 ### Added - Complete Event System API Coverage 🎵

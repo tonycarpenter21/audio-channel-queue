@@ -381,28 +381,6 @@ export const applyVolumeDucking = async (activeChannelNumber: number): Promise<v
 };
 
 /**
- * Fades the volume for a specific channel over time (alias for transitionVolume with improved naming)
- * @param channelNumber - The channel number to fade
- * @param targetVolume - Target volume level (0-1)
- * @param duration - Fade duration in milliseconds (defaults to 250)
- * @param easing - Easing function type (defaults to 'ease-out')
- * @returns Promise that resolves when fade completes
- * @example
- * ```typescript
- * await fadeVolume(0, 0, 800, 'ease-in'); // Fade out over 800ms
- * await fadeVolume(0, 1, 600, 'ease-out'); // Fade in over 600ms
- * ```
- */
-export const fadeVolume = async (
-  channelNumber: number,
-  targetVolume: number,
-  duration: number = 250,
-  easing: EasingType = EasingType.EaseOut
-): Promise<void> => {
-  return transitionVolume(channelNumber, targetVolume, duration, easing);
-};
-
-/**
  * Restores normal volume levels when priority channel queue becomes empty
  * @param stoppedChannelNumber - The channel that just stopped playing
  * @internal

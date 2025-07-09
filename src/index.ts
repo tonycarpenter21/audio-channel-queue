@@ -60,17 +60,16 @@ export {
 
 // Volume control and ducking functions
 export {
+  cancelAllVolumeTransitions,
+  cancelVolumeTransition,
   clearVolumeDucking,
-  fadeVolume,
   getAllChannelsVolume,
   getChannelVolume,
   getFadeConfig,
   setAllChannelsVolume,
   setChannelVolume,
   setVolumeDucking,
-  transitionVolume,
-  cancelVolumeTransition,
-  cancelAllVolumeTransitions
+  transitionVolume
 } from './volume';
 
 // Audio information and progress tracking functions

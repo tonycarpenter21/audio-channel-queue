@@ -39,8 +39,8 @@ describe('Enhanced Core Features', () => {
 
     it('should queue audio with all options', async () => {
       await queueAudio('test.mp3', 0, {
+        addToFront: false,
         loop: true,
-        priority: false,
         volume: 0.5
       });
 
@@ -66,10 +66,10 @@ describe('Enhanced Core Features', () => {
       expect(audioChannels[1].volume).toBe(1);
     });
 
-    it('should add to front of queue when priority option is true', async () => {
+    it('should add to front of queue when addToFront option is true', async () => {
       await queueAudio('first.mp3', 0);
       await queueAudio('second.mp3', 0);
-      await queueAudio('priority.mp3', 0, { priority: true });
+      await queueAudio('priority.mp3', 0, { addToFront: true });
 
       expect(audioChannels[0].queue.length).toBe(3);
       // Priority audio should be inserted after the currently playing audio

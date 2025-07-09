@@ -53,8 +53,6 @@ export interface AudioQueueOptions {
   loop?: boolean;
   /** Maximum number of items allowed in the queue (defaults to unlimited) */
   maxQueueSize?: number;
-  /** @deprecated Use addToFront instead. Legacy support for priority queuing */
-  priority?: boolean;
   /** Volume level for this specific audio (0-1) */
   volume?: number;
 }

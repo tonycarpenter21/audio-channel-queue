@@ -12,7 +12,11 @@ import {
   setupProgressTracking,
   cleanupProgressTracking
 } from './events';
-import { applyVolumeDucking, restoreVolumeLevels, cancelVolumeTransition } from './volume';
+import { 
+  applyVolumeDucking, 
+  restoreVolumeLevels, 
+  cancelVolumeTransition
+} from './volume';
 import { setupAudioErrorHandling, handleAudioError } from './errors';
 
 /**
@@ -300,10 +304,10 @@ export const queueAudio = async (
     }
   }
 
-  // Handle priority option (same as addToFront for backward compatibility)
-  const shouldAddToFront = options?.addToFront || options?.priority;
+  // Handle addToFront option
+  const shouldAddToFront = options?.addToFront;
 
-  // Add to queue based on priority/addToFront option
+  // Add to queue based on addToFront option
   if (shouldAddToFront && channel.queue.length > 0) {
     // Insert after currently playing track (at index 1)
     channel.queue.splice(1, 0, audio);
