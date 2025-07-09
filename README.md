@@ -357,6 +357,13 @@ onQueueChange(0, (snapshot) => updateQueueDisplay(snapshot)); // Update UI on qu
 ```
 
 ```typescript
+// Unsubscribe from queue change events (removes ALL queue change callbacks for the channel)
+offQueueChange(channelNumber?);
+offQueueChange(); // Stop receiving all queue change notifications for default channel (0)
+offQueueChange(1); // Stop receiving all queue change notifications for channel 1
+```
+
+```typescript
 // Subscribe to audio start events.
 onAudioStart(channelNumber, callback);
 onAudioStart(0, (info) => console.log(`Started: ${info.fileName}`)); // Log audio starts
@@ -364,8 +371,9 @@ onAudioStart(0, (info) => console.log(`Started: ${info.fileName}`)); // Log audi
 
 ```typescript
 // Unsubscribe from audio start events (removes ALL start callbacks for the channel)
-offAudioStart(channelNumber);
-offAudioStart(0); // Stop receiving all start notifications for channel 0
+offAudioStart(channelNumber?);
+offAudioStart(); // Stop receiving all start notifications for default channel (0)
+offAudioStart(1); // Stop receiving all start notifications for channel 1
 ```
 
 ```typescript
@@ -376,8 +384,9 @@ onAudioComplete(0, (info) => logPlayHistory(info)); // Track completed audio
 
 ```typescript
 // Unsubscribe from audio completion events (removes ALL complete callbacks for the channel)
-offAudioComplete(channelNumber);
-offAudioComplete(0); // Stop receiving all completion notifications for channel 0
+offAudioComplete(channelNumber?);
+offAudioComplete(); // Stop receiving all completion notifications for default channel (0)
+offAudioComplete(1); // Stop receiving all completion notifications for channel 1
 ```
 
 ```typescript
@@ -387,9 +396,23 @@ onAudioPause(0, (info) => showPauseIcon(info)); // Show pause state in UI
 ```
 
 ```typescript
+// Unsubscribe from audio pause events (removes ALL pause callbacks for the channel)
+offAudioPause(channelNumber?);
+offAudioPause(); // Stop receiving all pause notifications for default channel (0)
+offAudioPause(1); // Stop receiving all pause notifications for channel 1
+```
+
+```typescript
 // Subscribe to audio resume events.
 onAudioResume(channelNumber, callback);
 onAudioResume(0, (info) => showPlayIcon(info)); // Show play state in UI
+```
+
+```typescript
+// Unsubscribe from audio resume events (removes ALL resume callbacks for the channel)
+offAudioResume(channelNumber?);
+offAudioResume(); // Stop receiving all resume notifications for default channel (0)
+offAudioResume(1); // Stop receiving all resume notifications for channel 1
 ```
 
 ### TypeScript Support

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.0] - 2025-01-16
+
+### Changed - Code Quality & Type Safety Improvements
+- **Volume Ducking Timing**: Updated ducking resume timing to match other audio timing operations for consistency
+- **Interface Organization**: Organized all interfaces alphabetically for better maintainability and code readability
+- **Documentation Updates**: Enhanced README with proper `async`/`await` syntax for all asynchronous functions
+- **Fallbacks**: Added channel 0 fallbacks for offAudioStart, offAudioComplete, offAudioPause, offAudioResume, and offQueueChange with associated testing
+
+### Added
+- **AudioErrorType Enum**: New enum for better error type categorization and type safety
+
+### Removed
+- **Removed Unused Property**: Removed optional `fallbackUrls` property from `RetryConfig` interface
+
 ## [1.11.0] - 2025-01-16
 
 ### Added - Complete Event System API Coverage 🎵

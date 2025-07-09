@@ -1126,3 +1126,175 @@ describe('Channel Modification Warning System', () => {
     });
   });
 });
+
+describe('Off Functions Channel 0 Fallback', () => {
+  beforeEach(() => {
+    // Create channel 0 with callbacks
+    audioChannels[0] = {
+      audioCompleteCallbacks: new Set([jest.fn(), jest.fn()]),
+      audioErrorCallbacks: new Set(),
+      audioPauseCallbacks: new Set([jest.fn()]),
+      audioResumeCallbacks: new Set([jest.fn()]),
+      audioStartCallbacks: new Set([jest.fn()]),
+      isPaused: false,
+      progressCallbacks: new Map(),
+      queue: [],
+      queueChangeCallbacks: new Set([jest.fn()]),
+      volume: 1.0
+    };
+  });
+
+  describe('offQueueChange', () => {
+    it('should use channel 0 as default when no parameter provided', () => {
+      expect(audioChannels[0].queueChangeCallbacks.size).toBe(1);
+      
+      offQueueChange(); // No parameter - should default to channel 0
+      
+      expect(audioChannels[0].queueChangeCallbacks.size).toBe(0);
+    });
+
+    it('should work the same way when explicitly passing channel 0', () => {
+      expect(audioChannels[0].queueChangeCallbacks.size).toBe(1);
+      
+      offQueueChange(0); // Explicit channel 0
+      
+      expect(audioChannels[0].queueChangeCallbacks.size).toBe(0);
+    });
+
+    it('should handle non-existent channel gracefully', () => {
+      expect(() => offQueueChange(999)).not.toThrow();
+    });
+  });
+
+  describe('offAudioStart', () => {
+    it('should use channel 0 as default when no parameter provided', () => {
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(1);
+      
+      offAudioStart(); // No parameter - should default to channel 0
+      
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(0);
+    });
+
+    it('should work the same way when explicitly passing channel 0', () => {
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(1);
+      
+      offAudioStart(0); // Explicit channel 0
+      
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(0);
+    });
+
+    it('should handle non-existent channel gracefully', () => {
+      expect(() => offAudioStart(999)).not.toThrow();
+    });
+  });
+
+  describe('offAudioComplete', () => {
+    it('should use channel 0 as default when no parameter provided', () => {
+      expect(audioChannels[0].audioCompleteCallbacks.size).toBe(2);
+      
+      offAudioComplete(); // No parameter - should default to channel 0
+      
+      expect(audioChannels[0].audioCompleteCallbacks.size).toBe(0);
+    });
+
+    it('should work the same way when explicitly passing channel 0', () => {
+      expect(audioChannels[0].audioCompleteCallbacks.size).toBe(2);
+      
+      offAudioComplete(0); // Explicit channel 0
+      
+      expect(audioChannels[0].audioCompleteCallbacks.size).toBe(0);
+    });
+
+    it('should handle non-existent channel gracefully', () => {
+      expect(() => offAudioComplete(999)).not.toThrow();
+    });
+  });
+
+  describe('offAudioPause', () => {
+    it('should use channel 0 as default when no parameter provided', () => {
+      expect(audioChannels[0].audioPauseCallbacks.size).toBe(1);
+      
+      offAudioPause(); // No parameter - should default to channel 0
+      
+      expect(audioChannels[0].audioPauseCallbacks.size).toBe(0);
+    });
+
+    it('should work the same way when explicitly passing channel 0', () => {
+      expect(audioChannels[0].audioPauseCallbacks.size).toBe(1);
+      
+      offAudioPause(0); // Explicit channel 0
+      
+      expect(audioChannels[0].audioPauseCallbacks.size).toBe(0);
+    });
+
+    it('should handle non-existent channel gracefully', () => {
+      expect(() => offAudioPause(999)).not.toThrow();
+    });
+  });
+
+  describe('offAudioResume', () => {
+    it('should use channel 0 as default when no parameter provided', () => {
+      expect(audioChannels[0].audioResumeCallbacks.size).toBe(1);
+      
+      offAudioResume(); // No parameter - should default to channel 0
+      
+      expect(audioChannels[0].audioResumeCallbacks.size).toBe(0);
+    });
+
+    it('should work the same way when explicitly passing channel 0', () => {
+      expect(audioChannels[0].audioResumeCallbacks.size).toBe(1);
+      
+      offAudioResume(0); // Explicit channel 0
+      
+      expect(audioChannels[0].audioResumeCallbacks.size).toBe(0);
+    });
+
+    it('should handle non-existent channel gracefully', () => {
+      expect(() => offAudioResume(999)).not.toThrow();
+    });
+  });
+
+  describe('Multi-channel behavior with fallback', () => {
+    beforeEach(() => {
+      // Create channel 1 with different callbacks
+      audioChannels[1] = {
+        audioCompleteCallbacks: new Set([jest.fn()]),
+        audioErrorCallbacks: new Set(),
+        audioPauseCallbacks: new Set([jest.fn()]),
+        audioResumeCallbacks: new Set([jest.fn()]),
+        audioStartCallbacks: new Set([jest.fn()]),
+        isPaused: false,
+        progressCallbacks: new Map(),
+        queue: [],
+        queueChangeCallbacks: new Set([jest.fn()]),
+        volume: 1.0
+      };
+    });
+
+    it('should not affect other channels when using default fallback', () => {
+      // Verify initial state
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(1);
+      expect(audioChannels[1].audioStartCallbacks.size).toBe(1);
+
+      // Use default fallback (channel 0)
+      offAudioStart();
+
+      // Channel 0 should be cleared, channel 1 should be unchanged
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(0);
+      expect(audioChannels[1].audioStartCallbacks.size).toBe(1);
+    });
+
+    it('should work correctly on specific channels while preserving channel 0', () => {
+      // Verify initial state
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(1);
+      expect(audioChannels[1].audioStartCallbacks.size).toBe(1);
+
+      // Clear channel 1 explicitly
+      offAudioStart(1);
+
+      // Channel 0 should be unchanged, channel 1 should be cleared
+      expect(audioChannels[0].audioStartCallbacks.size).toBe(1);
+      expect(audioChannels[1].audioStartCallbacks.size).toBe(0);
+    });
+  });
+});
