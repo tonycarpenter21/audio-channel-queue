@@ -5,20 +5,20 @@ The purpose of this package is to help manage the playback of audio files.
 
 📚 [Docs](https://tonycarpenter21.github.io/audio-queue-docs/)
 
-## 🌟 Key Features
+## Key Features
 
-- ✅ **Multi-channel queue management** - Independent audio queues for concurrent playback
-- ✅ **Pause/Resume functionality** - Full playback control for individual channels or all channels
-- ✅ **Volume control with ducking** - Dynamic volume management and automatic background audio reduction
-- ✅ **Loop support** - Seamless audio looping for background music and ambient sounds
-- ✅ **Priority queueing** - Add urgent audio to the front of any queue
-- ✅ **Real-time progress tracking** - Comprehensive playback monitoring and metadata
-- ✅ **Event-driven architecture** - Extensive callback system for UI integration
-- ✅ **TypeScript support** - Full type definitions and IntelliSense support
-- ✅ **Zero dependencies** - Lightweight and self-contained
-- ✅ **Backward compatible** - All existing APIs continue to work
+- **Multi-channel queue management** - Independent audio queues for concurrent playback
+- **Pause/Resume functionality** - Full playback control for individual channels or all channels
+- **Volume control with ducking** - Dynamic volume management, global volume control, and automatic background audio reduction
+- **Loop support** - Seamless audio looping for background music and ambient sounds
+- **Priority queueing** - Add urgent audio to the front of any queue
+- **Real-time progress tracking** - Comprehensive playback monitoring and metadata
+- **Event-driven architecture** - Extensive callback system for UI integration
+- **TypeScript support** - Full type definitions and IntelliSense support
+- **Zero dependencies** - Lightweight and self-contained
+- **Backward compatible** - All existing APIs continue to work
 
-This package offers TypeScript support 📘, boasts zero dependencies 🚫, and is released under the MIT license 📜. As an added bonus, it's NON-GMO 🌱 and 100% Free Range Organic 🐓.
+This package offers TypeScript support, has zero dependencies, and is released under the MIT license.
 
 To preview this package and see how it works with visualized code examples, check out the demo that can be found here: [Audio Channel Queue Demo](https://tonycarpenter21.github.io/audio-queue-demo/). (A link to the demo repo can be found here: [Audio Channel Queue Demo Repo](https://github.com/tonycarpenter21/audio-queue-demo).)
 
@@ -32,18 +32,18 @@ Documentation can be found [here](https://tonycarpenter21.github.io/audio-queue-
 
 This package is designed for **browser environments** and uses the Web Audio API (`HTMLAudioElement`). It is **not** intended for Node.js server-side use.
 
-### ✅ **Supported Browsers:**
+### **Supported Browsers:**
 - **Chrome 51+** (June 2016)
 - **Firefox 54+** (June 2017)  
 - **Safari 10+** (September 2016)
 - **Edge 15+** (April 2017)
 - **Mobile browsers** with HTML5 audio support
 
-### 🛠️ **Development Requirements:**
+### **Development Requirements:**
 - **Node.js 14+** (for building and testing only)
 - **TypeScript 4.5+** (included in devDependencies)
 
-### ⚠️ **Not Supported:**
+### **Not Supported:**
 - Node.js server environments (no HTMLAudioElement)
 - Internet Explorer (lacks ES6 support)
 - Web Workers (no DOM access)
@@ -196,6 +196,47 @@ setAllChannelsVolume(volume);
 await setAllChannelsVolume(0.6); // Set all channels to 60% volume
 await setAllChannelsVolume(0.0); // Mute all channels
 ```
+
+### Global Volume Control
+```typescript
+// Set a global volume multiplier that affects all channels while preserving their relative levels.
+setGlobalVolume(volume);
+await setGlobalVolume(0.5); // Set global volume to 50%
+```
+
+```typescript
+// Get the current global volume level.
+getGlobalVolume();
+const globalVol = getGlobalVolume(); // Returns current global volume (0-1)
+console.log(`Global volume: ${(getGlobalVolume() * 100).toFixed(0)}%`);
+```
+
+**How Global Volume Works:**
+The global volume acts as a **global volume multiplier** - it scales all channel volumes proportionally while preserving their individual settings. This is perfect for implementing a global volume slider in your UI.
+
+```typescript
+// Example: Setting up different audio types with a global volume control
+await setChannelVolume(0, 0.3); // SFX channel at 30%
+await setChannelVolume(1, 0.7); // Music channel at 70%
+await setChannelVolume(2, 0.5); // Voice channel at 50%
+
+// User adjusts global volume slider to 50%
+await setGlobalVolume(0.5);
+
+// Actual playback volumes become:
+// - SFX: 30% × 50% = 15%
+// - Music: 70% × 50% = 35%
+// - Voice: 50% × 50% = 25%
+
+// Channel volumes remain at their original settings (0.3, 0.7, 0.5)
+// So when global volume is increased, ratios are preserved
+await setGlobalVolume(1.0); // Back to full volume
+// - SFX: 30% × 100% = 30%
+// - Music: 70% × 100% = 70%
+// - Voice: 50% × 100% = 50%
+```
+
+**Note:** `setAllChannelsVolume()` sets all channels to the **same** volume, while `setGlobalVolume()` **multiplies** all channels by the same amount, preserving their relative differences.
 
 ### Volume Ducking (Background Audio Reduction)
 ```typescript

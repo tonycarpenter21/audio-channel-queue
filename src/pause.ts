@@ -13,6 +13,7 @@ import { audioChannels } from './info';
 import { getAudioInfoFromElement } from './utils';
 import { emitAudioPause, emitAudioResume } from './events';
 import { transitionVolume, getFadeConfig } from './volume';
+import { setWebAudioVolume } from './web-audio';
 
 /**
  * Gets the current volume for a channel, accounting for synchronous state
@@ -34,7 +35,15 @@ const setChannelVolumeSync = (channelNumber: number, volume: number): void => {
   if (channel) {
     channel.volume = volume;
     if (channel.queue.length > 0) {
-      channel.queue[0].volume = volume;
+      const audio = channel.queue[0];
+      if (channel.webAudioNodes) {
+        const nodes = channel.webAudioNodes.get(audio);
+        if (nodes) {
+          // Update the gain node when Web Audio is active
+          setWebAudioVolume(nodes.gainNode, volume);
+        }
+      }
+      audio.volume = volume;
     }
   }
 };
@@ -59,12 +68,16 @@ export const pauseWithFade = async (
 ): Promise<void> => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
 
-  if (!channel || channel.queue.length === 0) return;
+  if (!channel || channel.queue.length === 0) {
+    return;
+  }
 
   const currentAudio: HTMLAudioElement = channel.queue[0];
 
   // Don't pause if already paused or ended
-  if (currentAudio.paused || currentAudio.ended) return;
+  if (currentAudio.paused || currentAudio.ended) {
+    return;
+  }
 
   const config: FadeConfig = getFadeConfig(fadeType);
   const effectiveDuration: number = duration ?? config.duration;
@@ -105,10 +118,12 @@ export const pauseWithFade = async (
 
   // Fade to 0 with pause curve, then pause
   await transitionVolume(channelNumber, 0, effectiveDuration, config.pauseCurve);
+  // Pause the audio
   await pauseChannel(channelNumber);
 
-  // Reset volume to original for resume (synchronously to avoid state issues)
-  setChannelVolumeSync(channelNumber, originalVolume);
+  // Restore channel.volume for resume, but DON'T restore gain node to prevent blip
+  // The gain node will be restored during the resume fade
+  channel.volume = originalVolume;
 
   // Mark transition as complete
   if (channel.fadeState) {
@@ -137,9 +152,12 @@ export const resumeWithFade = async (
 ): Promise<void> => {
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
 
-  if (!channel || channel.queue.length === 0) return;
-
+  if (!channel || channel.queue.length === 0) {
+    return;
+  }
+  const audio = channel.queue[0];
   const fadeState: ChannelFadeState | undefined = channel.fadeState;
+
   if (!fadeState?.isPaused) {
     // Fall back to regular resume if no fade state
     await resumeChannel(channelNumber);
@@ -163,8 +181,10 @@ export const resumeWithFade = async (
   if (effectiveDuration === 0) {
     // Instant resume
     const targetVolume = fadeState.originalVolume > 0 ? fadeState.originalVolume : 1.0;
+
     setChannelVolumeSync(channelNumber, targetVolume);
     await resumeChannel(channelNumber);
+
     fadeState.isPaused = false;
     fadeState.isTransitioning = false;
     return;
@@ -176,13 +196,23 @@ export const resumeWithFade = async (
   // Mark as transitioning to prevent volume capture during rapid toggles
   fadeState.isTransitioning = true;
 
-  // Set volume to 0, resume, then fade to original with resume curve
-  setChannelVolumeSync(channelNumber, 0);
+  // Ensure gain node is at 0 before resuming (should already be from pause)
+  // Don't touch audio.volume when Web Audio is active - iOS may reset it
+  // Don't touch channel.volume - it should stay at originalVolume
+  if (channel.webAudioNodes) {
+    const nodes = channel.webAudioNodes.get(audio);
+    if (nodes) {
+      setWebAudioVolume(nodes.gainNode, 0);
+    }
+  } else {
+    // Fallback for non-Web Audio: set audio.volume directly
+    audio.volume = 0;
+  }
+
   await resumeChannel(channelNumber);
 
   // Use the stored original volume, not current volume, to prevent race conditions
   await transitionVolume(channelNumber, targetVolume, effectiveDuration, config.resumeCurve);
-
   fadeState.isPaused = false;
   fadeState.isTransitioning = false;
 };

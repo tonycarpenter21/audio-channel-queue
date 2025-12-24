@@ -3,7 +3,7 @@
  * @fileoverview Type definitions for the audio-channel-queue package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TimerType = exports.FadeType = exports.EasingType = exports.GLOBAL_PROGRESS_KEY = exports.MAX_CHANNELS = void 0;
+exports.TimerType = exports.FadeType = exports.EasingType = exports.AudioErrorType = exports.GLOBAL_PROGRESS_KEY = exports.MAX_CHANNELS = void 0;
 /**
  * Maximum number of audio channels allowed to prevent memory exhaustion
  */
@@ -14,7 +14,20 @@ exports.MAX_CHANNELS = 64;
  */
 exports.GLOBAL_PROGRESS_KEY = Symbol('global-progress-callbacks');
 /**
- * Easing function types for volume transitions
+ * Types of audio errors that can occur during playback
+ */
+var AudioErrorType;
+(function (AudioErrorType) {
+    AudioErrorType["Abort"] = "abort";
+    AudioErrorType["Decode"] = "decode";
+    AudioErrorType["Network"] = "network";
+    AudioErrorType["Permission"] = "permission";
+    AudioErrorType["Timeout"] = "timeout";
+    AudioErrorType["Unknown"] = "unknown";
+    AudioErrorType["Unsupported"] = "unsupported";
+})(AudioErrorType || (exports.AudioErrorType = AudioErrorType = {}));
+/**
+ * Easing function types for smooth volume transitions and animations
  */
 var EasingType;
 (function (EasingType) {
@@ -24,7 +37,7 @@ var EasingType;
     EasingType["EaseInOut"] = "ease-in-out";
 })(EasingType || (exports.EasingType = EasingType = {}));
 /**
- * Fade type for pause/resume operations with integrated volume transitions
+ * Predefined fade types for pause/resume operations with different transition characteristics
  */
 var FadeType;
 (function (FadeType) {
@@ -33,7 +46,7 @@ var FadeType;
     FadeType["Dramatic"] = "dramatic";
 })(FadeType || (exports.FadeType = FadeType = {}));
 /**
- * Timer types for volume transitions to ensure proper cleanup
+ * Timer implementation types used for volume transitions to ensure proper cleanup
  */
 var TimerType;
 (function (TimerType) {

@@ -34,8 +34,6 @@ let globalErrorRecovery: ErrorRecoveryOptions = {
 
 const retryAttempts: WeakMap<HTMLAudioElement, number> = new WeakMap();
 
-const loadTimeouts: WeakMap<HTMLAudioElement, number> = new WeakMap();
-
 /**
  * Subscribes to audio error events for a specific channel
  * @param channelNumber - The channel number to listen to (defaults to 0)
@@ -229,7 +227,7 @@ export const emitAudioError = (
   // Log to analytics if enabled
   if (globalErrorRecovery.logErrorsToAnalytics) {
     // eslint-disable-next-line no-console
-    console.warn('Audio Error Analytics:', errorInfo);
+    console.error('Audio Error Analytics:', errorInfo);
   }
 
   channel.audioErrorCallbacks.forEach((callback) => {
@@ -310,42 +308,8 @@ export const setupAudioErrorHandling = (
   const channel: ExtendedAudioQueueChannel = audioChannels[channelNumber];
   if (!channel) return;
 
-  // Set up loading timeout with test environment compatibility
-  let timeoutId: number;
-  if (typeof setTimeout !== 'undefined') {
-    timeoutId = setTimeout(() => {
-      if (audio.networkState === HTMLMediaElement.NETWORK_LOADING) {
-        const timeoutError = new Error(
-          `Audio loading timeout after ${globalRetryConfig.timeoutMs}ms`
-        );
-        handleAudioError(audio, channelNumber, originalUrl, timeoutError);
-      }
-    }, globalRetryConfig.timeoutMs) as unknown as number;
-
-    loadTimeouts.set(audio, timeoutId);
-  }
-
-  // Clear timeout when metadata loads successfully
-  const handleLoadSuccess = (): void => {
-    if (typeof setTimeout !== 'undefined') {
-      const timeoutId = loadTimeouts.get(audio);
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        loadTimeouts.delete(audio);
-      }
-    }
-  };
-
   // Handle various error events
   const handleError = (_event: Event): void => {
-    if (typeof setTimeout !== 'undefined') {
-      const timeoutId = loadTimeouts.get(audio);
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        loadTimeouts.delete(audio);
-      }
-    }
-
     const error = new Error(`Audio loading failed: ${audio.error?.message || 'Unknown error'}`);
     handleAudioError(audio, channelNumber, originalUrl, error);
   };
@@ -364,8 +328,6 @@ export const setupAudioErrorHandling = (
   audio.addEventListener('error', handleError);
   audio.addEventListener('abort', handleAbort);
   audio.addEventListener('stalled', handleStall);
-  audio.addEventListener('loadedmetadata', handleLoadSuccess);
-  audio.addEventListener('canplay', handleLoadSuccess);
 
   // Custom play error handling
   if (onError) {
@@ -423,7 +385,7 @@ export const handleAudioError = async (
     currentAttempts < retryConfig.maxRetries &&
     globalErrorRecovery.autoRetry
   ) {
-    const delay = retryConfig.exponentialBackoff
+    const delay: number = retryConfig.exponentialBackoff
       ? retryConfig.baseDelay * Math.pow(2, currentAttempts)
       : retryConfig.baseDelay;
 
@@ -481,21 +443,11 @@ export const createProtectedAudioElement = async (
   const audio = new Audio();
 
   return new Promise((resolve, reject) => {
-    const cleanup = (): void => {
-      const timeoutId = loadTimeouts.get(audio);
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        loadTimeouts.delete(audio);
-      }
-    };
-
     const handleSuccess = (): void => {
-      cleanup();
       resolve(audio);
     };
 
     const handleError = (error: Error): void => {
-      cleanup();
       reject(error);
     };
 

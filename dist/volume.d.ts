@@ -28,6 +28,7 @@ export declare const getFadeConfig: (fadeType: FadeType) => FadeConfig;
 export declare const transitionVolume: (channelNumber: number, targetVolume: number, duration?: number, easing?: EasingType) => Promise<void>;
 /**
  * Sets the volume for a specific channel with optional smooth transition
+ * Automatically uses Web Audio API on iOS devices for enhanced volume control
  * @param channelNumber - The channel number to set volume for
  * @param volume - Volume level (0-1)
  * @param transitionDuration - Optional transition duration in milliseconds
@@ -74,6 +75,31 @@ export declare const getAllChannelsVolume: () => number[];
  */
 export declare const setAllChannelsVolume: (volume: number) => Promise<void>;
 /**
+ * Sets the global volume multiplier that affects all channels
+ * This acts as a global volume control - individual channel volumes are multiplied by this value
+ * @param volume - Global volume level (0-1, will be clamped to this range)
+ * @example
+ * ```typescript
+ * // Set channel-specific volumes
+ * await setChannelVolume(0, 0.8); // SFX at 80%
+ * await setChannelVolume(1, 0.6); // Music at 60%
+ *
+ * // Apply global volume of 50% - all channels play at half their set volume
+ * await setGlobalVolume(0.5); // SFX now plays at 40%, music at 30%
+ * ```
+ */
+export declare const setGlobalVolume: (volume: number) => Promise<void>;
+/**
+ * Gets the current global volume multiplier
+ * @returns Current global volume level (0-1), defaults to 1.0
+ * @example
+ * ```typescript
+ * const globalVol = getGlobalVolume();
+ * console.log(`Global volume is ${globalVol * 100}%`);
+ * ```
+ */
+export declare const getGlobalVolume: () => number;
+/**
  * Configures volume ducking for channels. When the priority channel plays audio,
  * all other channels will be automatically reduced to the ducking volume level
  * @param config - Volume ducking configuration
@@ -104,20 +130,6 @@ export declare const clearVolumeDucking: () => void;
  */
 export declare const applyVolumeDucking: (activeChannelNumber: number) => Promise<void>;
 /**
- * Fades the volume for a specific channel over time (alias for transitionVolume with improved naming)
- * @param channelNumber - The channel number to fade
- * @param targetVolume - Target volume level (0-1)
- * @param duration - Fade duration in milliseconds (defaults to 250)
- * @param easing - Easing function type (defaults to 'ease-out')
- * @returns Promise that resolves when fade completes
- * @example
- * ```typescript
- * await fadeVolume(0, 0, 800, 'ease-in'); // Fade out over 800ms
- * await fadeVolume(0, 1, 600, 'ease-out'); // Fade in over 600ms
- * ```
- */
-export declare const fadeVolume: (channelNumber: number, targetVolume: number, duration?: number, easing?: EasingType) => Promise<void>;
-/**
  * Restores normal volume levels when priority channel queue becomes empty
  * @param stoppedChannelNumber - The channel that just stopped playing
  * @internal
@@ -134,3 +146,17 @@ export declare const cancelVolumeTransition: (channelNumber: number) => void;
  * @internal
  */
 export declare const cancelAllVolumeTransitions: () => void;
+/**
+ * Initializes Web Audio API nodes for a new audio element
+ * @param audio - The audio element to initialize nodes for
+ * @param channelNumber - The channel number this audio belongs to
+ * @internal
+ */
+export declare const initializeWebAudioForAudio: (audio: HTMLAudioElement, channelNumber: number) => Promise<void>;
+/**
+ * Cleans up Web Audio API nodes for an audio element
+ * @param audio - The audio element to clean up nodes for
+ * @param channelNumber - The channel number this audio belongs to
+ * @internal
+ */
+export declare const cleanupWebAudioForAudio: (audio: HTMLAudioElement, channelNumber: number) => void;

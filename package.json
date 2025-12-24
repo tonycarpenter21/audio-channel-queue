@@ -1,6 +1,6 @@
 {
   "name": "audio-channel-queue",
-  "version": "1.12.0",
+  "version": "1.12.1-beta.19",
   "description": "Allows you to queue audio files to different playback channels.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
+    "prepare": "husky",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -22,10 +22,12 @@
     "prebuild": "npm run clean",
     "prepack": "npm run validate && npm run build",
     "validate": "npm run format:check && npm run lint && npm run test",
+    "login:token": "npm login --auth-type=token",
     "publish:patch": "npm version patch && npm run publish:release",
     "publish:minor": "npm version minor && npm run publish:release",
     "publish:major": "npm version major && npm run publish:release",
     "publish:release": "npm run validate && npm run build && npm publish",
+    "publish:beta": "npm version prerelease --preid=beta && npm publish --tag beta",
     "publish:dry": "npm run validate && npm run build && npm publish --dry-run"
   },
   "repository": {
@@ -49,8 +51,10 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.13",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^16.2.7",
     "rimraf": "^6.0.1",
     "ts-jest": "^29.2.5",
     "typescript": "^5.6.2",

@@ -5,8 +5,8 @@
  * volume management with ducking, progress tracking, and comprehensive event system
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllChannelsInfo = exports.cancelAllVolumeTransitions = exports.cancelVolumeTransition = exports.transitionVolume = exports.setVolumeDucking = exports.setChannelVolume = exports.setAllChannelsVolume = exports.getFadeConfig = exports.getChannelVolume = exports.getAllChannelsVolume = exports.fadeVolume = exports.clearVolumeDucking = exports.togglePauseWithFade = exports.togglePauseChannel = exports.togglePauseAllWithFade = exports.togglePauseAllChannels = exports.resumeWithFade = exports.resumeChannel = exports.resumeAllWithFade = exports.resumeAllChannels = exports.pauseWithFade = exports.pauseChannel = exports.pauseAllWithFade = exports.pauseAllChannels = exports.isChannelPaused = exports.getAllChannelsPauseState = exports.setRetryConfig = exports.setErrorRecovery = exports.retryFailedAudio = exports.onAudioError = exports.offAudioError = exports.getRetryConfig = exports.getErrorRecovery = exports.swapQueueItems = exports.reorderQueue = exports.removeQueuedItem = exports.getQueueLength = exports.getQueueItemInfo = exports.clearQueueAfterCurrent = exports.setChannelQueueLimit = exports.getQueueConfig = exports.setQueueConfig = exports.destroyAllChannels = exports.destroyChannel = exports.playAudioQueue = exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.queueAudioPriority = exports.queueAudio = void 0;
-exports.GLOBAL_PROGRESS_KEY = exports.TimerType = exports.MAX_CHANNELS = exports.FadeType = exports.EasingType = exports.validateAudioUrl = exports.sanitizeForDisplay = exports.getAudioInfoFromElement = exports.extractFileName = exports.createQueueSnapshot = exports.cleanWebpackFilename = exports.audioChannels = exports.onQueueChange = exports.onAudioStart = exports.onAudioResume = exports.onAudioProgress = exports.onAudioPause = exports.onAudioComplete = exports.offQueueChange = exports.offAudioStart = exports.offAudioResume = exports.offAudioProgress = exports.offAudioPause = exports.offAudioComplete = exports.getQueueSnapshot = exports.getCurrentAudioInfo = void 0;
+exports.transitionVolume = exports.setVolumeDucking = exports.setGlobalVolume = exports.setChannelVolume = exports.setAllChannelsVolume = exports.getGlobalVolume = exports.getFadeConfig = exports.getChannelVolume = exports.getAllChannelsVolume = exports.clearVolumeDucking = exports.cancelVolumeTransition = exports.cancelAllVolumeTransitions = exports.togglePauseWithFade = exports.togglePauseChannel = exports.togglePauseAllWithFade = exports.togglePauseAllChannels = exports.resumeWithFade = exports.resumeChannel = exports.resumeAllWithFade = exports.resumeAllChannels = exports.pauseWithFade = exports.pauseChannel = exports.pauseAllWithFade = exports.pauseAllChannels = exports.isChannelPaused = exports.getAllChannelsPauseState = exports.setRetryConfig = exports.setErrorRecovery = exports.retryFailedAudio = exports.onAudioError = exports.offAudioError = exports.getRetryConfig = exports.getErrorRecovery = exports.swapQueueItems = exports.reorderQueue = exports.removeQueuedItem = exports.getQueueLength = exports.getQueueItemInfo = exports.clearQueueAfterCurrent = exports.setChannelQueueLimit = exports.getQueueConfig = exports.setQueueConfig = exports.destroyAllChannels = exports.destroyChannel = exports.playAudioQueue = exports.stopAllAudio = exports.stopAllAudioInChannel = exports.stopCurrentAudioInChannel = exports.queueAudioPriority = exports.queueAudio = void 0;
+exports.GLOBAL_PROGRESS_KEY = exports.TimerType = exports.MAX_CHANNELS = exports.FadeType = exports.EasingType = exports.AudioErrorType = exports.validateAudioUrl = exports.sanitizeForDisplay = exports.getAudioInfoFromElement = exports.extractFileName = exports.createQueueSnapshot = exports.cleanWebpackFilename = exports.audioChannels = exports.onQueueChange = exports.onAudioStart = exports.onAudioResume = exports.onAudioProgress = exports.onAudioPause = exports.onAudioComplete = exports.offQueueChange = exports.offAudioStart = exports.offAudioResume = exports.offAudioProgress = exports.offAudioPause = exports.offAudioComplete = exports.getQueueSnapshot = exports.getCurrentAudioInfo = exports.getAllChannelsInfo = exports.shouldUseWebAudio = exports.setWebAudioVolume = exports.setWebAudioConfig = exports.resumeAudioContext = exports.isWebAudioSupported = exports.isIOSDevice = exports.getWebAudioVolume = exports.getWebAudioSupport = exports.getWebAudioConfig = exports.getAudioContext = exports.createWebAudioNodes = exports.cleanupWebAudioNodes = void 0;
 // Core queue management functions
 var core_1 = require("./core");
 Object.defineProperty(exports, "queueAudio", { enumerable: true, get: function () { return core_1.queueAudio; } });
@@ -55,17 +55,32 @@ Object.defineProperty(exports, "togglePauseChannel", { enumerable: true, get: fu
 Object.defineProperty(exports, "togglePauseWithFade", { enumerable: true, get: function () { return pause_1.togglePauseWithFade; } });
 // Volume control and ducking functions
 var volume_1 = require("./volume");
+Object.defineProperty(exports, "cancelAllVolumeTransitions", { enumerable: true, get: function () { return volume_1.cancelAllVolumeTransitions; } });
+Object.defineProperty(exports, "cancelVolumeTransition", { enumerable: true, get: function () { return volume_1.cancelVolumeTransition; } });
 Object.defineProperty(exports, "clearVolumeDucking", { enumerable: true, get: function () { return volume_1.clearVolumeDucking; } });
-Object.defineProperty(exports, "fadeVolume", { enumerable: true, get: function () { return volume_1.fadeVolume; } });
 Object.defineProperty(exports, "getAllChannelsVolume", { enumerable: true, get: function () { return volume_1.getAllChannelsVolume; } });
 Object.defineProperty(exports, "getChannelVolume", { enumerable: true, get: function () { return volume_1.getChannelVolume; } });
 Object.defineProperty(exports, "getFadeConfig", { enumerable: true, get: function () { return volume_1.getFadeConfig; } });
+Object.defineProperty(exports, "getGlobalVolume", { enumerable: true, get: function () { return volume_1.getGlobalVolume; } });
 Object.defineProperty(exports, "setAllChannelsVolume", { enumerable: true, get: function () { return volume_1.setAllChannelsVolume; } });
 Object.defineProperty(exports, "setChannelVolume", { enumerable: true, get: function () { return volume_1.setChannelVolume; } });
+Object.defineProperty(exports, "setGlobalVolume", { enumerable: true, get: function () { return volume_1.setGlobalVolume; } });
 Object.defineProperty(exports, "setVolumeDucking", { enumerable: true, get: function () { return volume_1.setVolumeDucking; } });
 Object.defineProperty(exports, "transitionVolume", { enumerable: true, get: function () { return volume_1.transitionVolume; } });
-Object.defineProperty(exports, "cancelVolumeTransition", { enumerable: true, get: function () { return volume_1.cancelVolumeTransition; } });
-Object.defineProperty(exports, "cancelAllVolumeTransitions", { enumerable: true, get: function () { return volume_1.cancelAllVolumeTransitions; } });
+// Web Audio API support functions
+var web_audio_1 = require("./web-audio");
+Object.defineProperty(exports, "cleanupWebAudioNodes", { enumerable: true, get: function () { return web_audio_1.cleanupWebAudioNodes; } });
+Object.defineProperty(exports, "createWebAudioNodes", { enumerable: true, get: function () { return web_audio_1.createWebAudioNodes; } });
+Object.defineProperty(exports, "getAudioContext", { enumerable: true, get: function () { return web_audio_1.getAudioContext; } });
+Object.defineProperty(exports, "getWebAudioConfig", { enumerable: true, get: function () { return web_audio_1.getWebAudioConfig; } });
+Object.defineProperty(exports, "getWebAudioSupport", { enumerable: true, get: function () { return web_audio_1.getWebAudioSupport; } });
+Object.defineProperty(exports, "getWebAudioVolume", { enumerable: true, get: function () { return web_audio_1.getWebAudioVolume; } });
+Object.defineProperty(exports, "isIOSDevice", { enumerable: true, get: function () { return web_audio_1.isIOSDevice; } });
+Object.defineProperty(exports, "isWebAudioSupported", { enumerable: true, get: function () { return web_audio_1.isWebAudioSupported; } });
+Object.defineProperty(exports, "resumeAudioContext", { enumerable: true, get: function () { return web_audio_1.resumeAudioContext; } });
+Object.defineProperty(exports, "setWebAudioConfig", { enumerable: true, get: function () { return web_audio_1.setWebAudioConfig; } });
+Object.defineProperty(exports, "setWebAudioVolume", { enumerable: true, get: function () { return web_audio_1.setWebAudioVolume; } });
+Object.defineProperty(exports, "shouldUseWebAudio", { enumerable: true, get: function () { return web_audio_1.shouldUseWebAudio; } });
 // Audio information and progress tracking functions
 var info_1 = require("./info");
 Object.defineProperty(exports, "getAllChannelsInfo", { enumerable: true, get: function () { return info_1.getAllChannelsInfo; } });
@@ -96,6 +111,7 @@ Object.defineProperty(exports, "sanitizeForDisplay", { enumerable: true, get: fu
 Object.defineProperty(exports, "validateAudioUrl", { enumerable: true, get: function () { return utils_1.validateAudioUrl; } });
 // Enums and constants
 var types_1 = require("./types");
+Object.defineProperty(exports, "AudioErrorType", { enumerable: true, get: function () { return types_1.AudioErrorType; } });
 Object.defineProperty(exports, "EasingType", { enumerable: true, get: function () { return types_1.EasingType; } });
 Object.defineProperty(exports, "FadeType", { enumerable: true, get: function () { return types_1.FadeType; } });
 Object.defineProperty(exports, "MAX_CHANNELS", { enumerable: true, get: function () { return types_1.MAX_CHANNELS; } });

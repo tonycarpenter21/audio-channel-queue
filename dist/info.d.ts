@@ -116,13 +116,14 @@ export declare function offAudioProgress(channelNumber?: number): void;
 export declare const onQueueChange: (channelNumber: number, callback: QueueChangeCallback) => void;
 /**
  * Removes queue change listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offQueueChange(0); // Stop receiving queue change notifications for channel 0
+ * offQueueChange(); // Stop receiving queue change notifications for default channel (0)
+ * offQueueChange(1); // Stop receiving queue change notifications for channel 1
  * ```
  */
-export declare const offQueueChange: (channelNumber: number) => void;
+export declare const offQueueChange: (channelNumber?: number) => void;
 /**
  * Subscribes to audio start events for a specific channel
  * @param channelNumber - The channel number to monitor
@@ -183,37 +184,41 @@ export declare const onAudioPause: (channelNumber: number, callback: AudioPauseC
 export declare const onAudioResume: (channelNumber: number, callback: AudioResumeCallback) => void;
 /**
  * Removes pause event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioPause(0); // Stop receiving pause notifications for channel 0
+ * offAudioPause(); // Stop receiving pause notifications for default channel (0)
+ * offAudioPause(1); // Stop receiving pause notifications for channel 1
  * ```
  */
-export declare const offAudioPause: (channelNumber: number) => void;
+export declare const offAudioPause: (channelNumber?: number) => void;
 /**
  * Removes resume event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioResume(0); // Stop receiving resume notifications for channel 0
+ * offAudioResume(); // Stop receiving resume notifications for default channel (0)
+ * offAudioResume(1); // Stop receiving resume notifications for channel 1
  * ```
  */
-export declare const offAudioResume: (channelNumber: number) => void;
+export declare const offAudioResume: (channelNumber?: number) => void;
 /**
  * Removes audio start event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioStart(0); // Stop receiving start notifications for channel 0
+ * offAudioStart(); // Stop receiving start notifications for default channel (0)
+ * offAudioStart(1); // Stop receiving start notifications for channel 1
  * ```
  */
-export declare const offAudioStart: (channelNumber: number) => void;
+export declare const offAudioStart: (channelNumber?: number) => void;
 /**
  * Removes audio complete event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioComplete(0); // Stop receiving completion notifications for channel 0
+ * offAudioComplete(); // Stop receiving completion notifications for default channel (0)
+ * offAudioComplete(1); // Stop receiving completion notifications for channel 1
  * ```
  */
-export declare const offAudioComplete: (channelNumber: number) => void;
+export declare const offAudioComplete: (channelNumber?: number) => void;

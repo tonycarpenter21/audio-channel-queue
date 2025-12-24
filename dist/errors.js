@@ -43,6 +43,7 @@ let globalRetryConfig = {
     baseDelay: 1000,
     enabled: true,
     exponentialBackoff: true,
+    fallbackUrls: [],
     maxRetries: 3,
     skipOnFailure: false,
     timeoutMs: 10000
@@ -55,7 +56,6 @@ let globalErrorRecovery = {
     showUserFeedback: false
 };
 const retryAttempts = new WeakMap();
-const loadTimeouts = new WeakMap();
 /**
  * Subscribes to audio error events for a specific channel
  * @param channelNumber - The channel number to listen to (defaults to 0)
@@ -161,10 +161,10 @@ exports.getRetryConfig = getRetryConfig;
  * ```typescript
  * setErrorRecovery({
  *   autoRetry: true,
- *   showUserFeedback: true,
+ *   fallbackToNextTrack: true,
  *   logErrorsToAnalytics: true,
  *   preserveQueueOnError: true,
- *   fallbackToNextTrack: true
+ *   showUserFeedback: true
  * });
  * ```
  */
@@ -240,7 +240,7 @@ const emitAudioError = (channelNumber, errorInfo, audioChannels) => {
     // Log to analytics if enabled
     if (globalErrorRecovery.logErrorsToAnalytics) {
         // eslint-disable-next-line no-console
-        console.warn('Audio Error Analytics:', errorInfo);
+        console.error('Audio Error Analytics:', errorInfo);
     }
     channel.audioErrorCallbacks.forEach((callback) => {
         try {
@@ -263,34 +263,34 @@ exports.emitAudioError = emitAudioError;
 const categorizeError = (error, audio) => {
     const errorMessage = error.message.toLowerCase();
     if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
-        return 'network';
+        return types_1.AudioErrorType.Network;
     }
     // Check for unsupported format first (more specific than decode)
     if (errorMessage.includes('not supported') ||
         errorMessage.includes('unsupported') ||
         errorMessage.includes('format not supported')) {
-        return 'unsupported';
+        return types_1.AudioErrorType.Unsupported;
     }
     if (errorMessage.includes('decode') || errorMessage.includes('format')) {
-        return 'decode';
+        return types_1.AudioErrorType.Decode;
     }
     if (errorMessage.includes('permission') || errorMessage.includes('blocked')) {
-        return 'permission';
+        return types_1.AudioErrorType.Permission;
     }
     if (errorMessage.includes('abort')) {
-        return 'abort';
+        return types_1.AudioErrorType.Abort;
     }
     if (errorMessage.includes('timeout')) {
-        return 'timeout';
+        return types_1.AudioErrorType.Timeout;
     }
     // Check audio element network state for more context
     if (audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
-        return 'network';
+        return types_1.AudioErrorType.Network;
     }
     if (audio.networkState === HTMLMediaElement.NETWORK_LOADING) {
-        return 'timeout';
+        return types_1.AudioErrorType.Timeout;
     }
-    return 'unknown';
+    return types_1.AudioErrorType.Unknown;
 };
 exports.categorizeError = categorizeError;
 /**
@@ -305,37 +305,9 @@ const setupAudioErrorHandling = (audio, channelNumber, originalUrl, onError) => 
     const channel = info_1.audioChannels[channelNumber];
     if (!channel)
         return;
-    // Set up loading timeout with test environment compatibility
-    let timeoutId;
-    if (typeof setTimeout !== 'undefined') {
-        timeoutId = setTimeout(() => {
-            if (audio.networkState === HTMLMediaElement.NETWORK_LOADING) {
-                const timeoutError = new Error(`Audio loading timeout after ${globalRetryConfig.timeoutMs}ms`);
-                (0, exports.handleAudioError)(audio, channelNumber, originalUrl, timeoutError);
-            }
-        }, globalRetryConfig.timeoutMs);
-        loadTimeouts.set(audio, timeoutId);
-    }
-    // Clear timeout when metadata loads successfully
-    const handleLoadSuccess = () => {
-        if (typeof setTimeout !== 'undefined') {
-            const timeoutId = loadTimeouts.get(audio);
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-                loadTimeouts.delete(audio);
-            }
-        }
-    };
     // Handle various error events
     const handleError = (_event) => {
         var _a;
-        if (typeof setTimeout !== 'undefined') {
-            const timeoutId = loadTimeouts.get(audio);
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-                loadTimeouts.delete(audio);
-            }
-        }
         const error = new Error(`Audio loading failed: ${((_a = audio.error) === null || _a === void 0 ? void 0 : _a.message) || 'Unknown error'}`);
         (0, exports.handleAudioError)(audio, channelNumber, originalUrl, error);
     };
@@ -351,8 +323,6 @@ const setupAudioErrorHandling = (audio, channelNumber, originalUrl, onError) => 
     audio.addEventListener('error', handleError);
     audio.addEventListener('abort', handleAbort);
     audio.addEventListener('stalled', handleStall);
-    audio.addEventListener('loadedmetadata', handleLoadSuccess);
-    audio.addEventListener('canplay', handleLoadSuccess);
     // Custom play error handling
     if (onError) {
         const originalPlay = audio.play.bind(audio);
@@ -450,19 +420,10 @@ exports.handleAudioError = handleAudioError;
 const createProtectedAudioElement = (url, channelNumber) => __awaiter(void 0, void 0, void 0, function* () {
     const audio = new Audio();
     return new Promise((resolve, reject) => {
-        const cleanup = () => {
-            const timeoutId = loadTimeouts.get(audio);
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-                loadTimeouts.delete(audio);
-            }
-        };
         const handleSuccess = () => {
-            cleanup();
             resolve(audio);
         };
         const handleError = (error) => {
-            cleanup();
             reject(error);
         };
         // Set up error handling

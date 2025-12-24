@@ -147,6 +147,9 @@ global.setTimeout = ((callback: TimeoutCallback, delay?: number) => {
     // Execute immediately for short delays (used in volume transitions and audio retries)
     callback();
     return 0 as unknown as ReturnType<typeof setTimeout>;
+  } else if (delay === 16) {
+    // For volume transitions using 16ms delays, use a proper timeout to prevent stack overflow
+    return originalSetTimeout(callback, 1);
   }
   // Use original setTimeout for longer delays
   return originalSetTimeout(callback, delay);

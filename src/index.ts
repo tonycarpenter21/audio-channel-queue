@@ -66,11 +66,29 @@ export {
   getAllChannelsVolume,
   getChannelVolume,
   getFadeConfig,
+  getGlobalVolume,
   setAllChannelsVolume,
   setChannelVolume,
+  setGlobalVolume,
   setVolumeDucking,
   transitionVolume
 } from './volume';
+
+// Web Audio API support functions
+export {
+  cleanupWebAudioNodes,
+  createWebAudioNodes,
+  getAudioContext,
+  getWebAudioConfig,
+  getWebAudioSupport,
+  getWebAudioVolume,
+  isIOSDevice,
+  isWebAudioSupported,
+  resumeAudioContext,
+  setWebAudioConfig,
+  setWebAudioVolume,
+  shouldUseWebAudio
+} from './web-audio';
 
 // Audio information and progress tracking functions
 export {
@@ -122,12 +140,15 @@ export type {
   FadeConfig,
   ProgressCallback,
   QueueChangeCallback,
+  QueueConfig,
   QueueItem,
   QueueManipulationResult,
   QueueSnapshot,
   RetryConfig,
   VolumeConfig,
-  QueueConfig
+  WebAudioConfig,
+  WebAudioNodeSet,
+  WebAudioSupport
 } from './types';
 
 // Enums and constants

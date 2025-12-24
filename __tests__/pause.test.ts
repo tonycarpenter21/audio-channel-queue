@@ -22,7 +22,7 @@ import { onAudioPause, onAudioResume, audioChannels } from '../src/info';
 import { queueAudio } from '../src/core';
 import { toMockAudioElement, mockCallback } from './setup';
 import { AudioInfo, FadeType, EasingType } from '../src/types';
-import { getFadeConfig } from '../src/volume';
+import { getFadeConfig, transitionVolume } from '../src/volume';
 
 // Fast duration for test fade operations to speed up tests
 // Can be increased if tests become flaky
@@ -1234,6 +1234,131 @@ describe('Race Condition Handling', () => {
       expect(mockAudio1.play).toHaveBeenCalled();
       expect(audioChannels[0].fadeState?.isPaused).toBe(false);
       expect(audioChannels[1].fadeState?.isPaused).toBe(false);
+    });
+  });
+
+  describe('Web Audio API pause/resume regression tests', () => {
+    it('should update gain node when resuming with Web Audio', async () => {
+      const mockGainNode = {
+        connect: jest.fn(),
+        context: { currentTime: 0 },
+        disconnect: jest.fn(),
+        gain: {
+          cancelScheduledValues: jest.fn(),
+          linearRampToValueAtTime: jest.fn(),
+          setValueAtTime: jest.fn(),
+          value: 0
+        }
+      };
+
+      const mockSourceNode = {
+        connect: jest.fn(),
+        disconnect: jest.fn()
+      };
+
+      const mockContext = {
+        createGain: jest.fn().mockReturnValue(mockGainNode),
+        createMediaElementSource: jest.fn().mockReturnValue(mockSourceNode),
+        currentTime: 0,
+        destination: {},
+        resume: jest.fn().mockResolvedValue(undefined),
+        state: 'running'
+      };
+
+      await queueAudio('test1.mp3', 1);
+      const mockAudio = toMockAudioElement(audioChannels[1].queue[0]);
+
+      audioChannels[1].webAudioContext = mockContext as unknown as AudioContext;
+      audioChannels[1].webAudioNodes = new Map();
+      audioChannels[1].webAudioNodes.set(mockAudio as unknown as HTMLAudioElement, {
+        gainNode: mockGainNode as unknown as GainNode,
+        sourceNode: mockSourceNode as unknown as MediaElementAudioSourceNode
+      });
+
+      // Simulate post-pause state: audio.volume and gain node out of sync
+      mockAudio.paused = true;
+      mockAudio.volume = 1.0;
+      mockGainNode.gain.value = 0;
+      audioChannels[1].volume = 1.0;
+      audioChannels[1].isPaused = true;
+      audioChannels[1].fadeState = {
+        customDuration: undefined,
+        fadeType: FadeType.Gentle,
+        isPaused: true,
+        isTransitioning: false,
+        originalVolume: 1.0
+      };
+
+      mockAudio.play.mockClear();
+      mockGainNode.gain.setValueAtTime.mockClear();
+
+      // Call instant resume (duration = 0)
+      // This should call setChannelVolumeSync which MUST update the gain node
+      await resumeWithFade(undefined, 1, 0);
+
+      expect(mockAudio.play).toHaveBeenCalled();
+
+      // The gain node MUST be updated
+      expect(mockGainNode.gain.value).toBeCloseTo(1.0, 5);
+    });
+
+    it('should read gain node value for transitionVolume start when Web Audio active', async () => {
+      const mockGainNode = {
+        connect: jest.fn(),
+        context: { currentTime: 0 },
+        disconnect: jest.fn(),
+        gain: {
+          cancelScheduledValues: jest.fn(),
+          linearRampToValueAtTime: jest.fn(),
+          setValueAtTime: jest.fn(),
+          value: 0
+        }
+      };
+
+      const mockSourceNode = {
+        connect: jest.fn(),
+        disconnect: jest.fn()
+      };
+
+      const mockContext = {
+        createGain: jest.fn().mockReturnValue(mockGainNode),
+        createMediaElementSource: jest.fn().mockReturnValue(mockSourceNode),
+        currentTime: 0,
+        destination: {},
+        resume: jest.fn().mockResolvedValue(undefined),
+        state: 'running'
+      };
+
+      await queueAudio('test1.mp3', 1);
+      const mockAudio = toMockAudioElement(audioChannels[1].queue[0]);
+
+      audioChannels[1].webAudioContext = mockContext as unknown as AudioContext;
+      audioChannels[1].webAudioNodes = new Map();
+      audioChannels[1].webAudioNodes.set(mockAudio as unknown as HTMLAudioElement, {
+        gainNode: mockGainNode as unknown as GainNode,
+        sourceNode: mockSourceNode as unknown as MediaElementAudioSourceNode
+      });
+
+      // Simulate the exact bug scenario from iOS logs:
+      // - audio.volume is 1.0 (ignored by iOS when Web Audio active)
+      // - gainNode.gain.value is 0 (the actual volume)
+      // - We want to transition to volume 1.0
+      mockAudio.volume = 1.0;
+      mockGainNode.gain.value = 0;
+      audioChannels[1].volume = 0;
+
+      mockGainNode.gain.setValueAtTime.mockClear();
+
+      // Call transitionVolume(1, 1.0, 800) - should fade from 0 to 1
+      // With the fix, it reads gainNode.gain.value (0), calculates delta=1, and animates
+      await transitionVolume(1, 1.0, 800);
+
+      // Wait for animation to complete
+      await new Promise((resolve) => setTimeout(resolve, 900));
+
+      // The gain node MUST be updated to 1.0
+
+      expect(mockGainNode.gain.value).toBeCloseTo(1.0, 1);
     });
   });
 });

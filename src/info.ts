@@ -47,7 +47,9 @@ export const getWhitelistedChannelProperties = (): string[] => {
     'isLocked',
     'maxQueueSize',
     'retryConfig',
-    'volumeConfig' // Legacy property that might still be used
+    'volumeConfig', // Legacy property that might still be used
+    'webAudioContext', // Web Audio API context
+    'webAudioNodes' // Web Audio API nodes map
   ];
 
   return [...new Set(propertyNames)]; // Remove duplicates

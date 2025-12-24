@@ -36,7 +36,9 @@ const getWhitelistedChannelProperties = () => {
         'isLocked',
         'maxQueueSize',
         'retryConfig',
-        'volumeConfig' // Legacy property that might still be used
+        'volumeConfig', // Legacy property that might still be used
+        'webAudioContext', // Web Audio API context
+        'webAudioNodes' // Web Audio API nodes map
     ];
     return [...new Set(propertyNames)]; // Remove duplicates
 };
@@ -301,13 +303,14 @@ const onQueueChange = (channelNumber, callback) => {
 exports.onQueueChange = onQueueChange;
 /**
  * Removes queue change listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offQueueChange(0); // Stop receiving queue change notifications for channel 0
+ * offQueueChange(); // Stop receiving queue change notifications for default channel (0)
+ * offQueueChange(1); // Stop receiving queue change notifications for channel 1
  * ```
  */
-const offQueueChange = (channelNumber) => {
+const offQueueChange = (channelNumber = 0) => {
     const channel = exports.audioChannels[channelNumber];
     if (!(channel === null || channel === void 0 ? void 0 : channel.queueChangeCallbacks))
         return;
@@ -462,13 +465,14 @@ const onAudioResume = (channelNumber, callback) => {
 exports.onAudioResume = onAudioResume;
 /**
  * Removes pause event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioPause(0); // Stop receiving pause notifications for channel 0
+ * offAudioPause(); // Stop receiving pause notifications for default channel (0)
+ * offAudioPause(1); // Stop receiving pause notifications for channel 1
  * ```
  */
-const offAudioPause = (channelNumber) => {
+const offAudioPause = (channelNumber = 0) => {
     const channel = exports.audioChannels[channelNumber];
     if (!(channel === null || channel === void 0 ? void 0 : channel.audioPauseCallbacks))
         return;
@@ -477,13 +481,14 @@ const offAudioPause = (channelNumber) => {
 exports.offAudioPause = offAudioPause;
 /**
  * Removes resume event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioResume(0); // Stop receiving resume notifications for channel 0
+ * offAudioResume(); // Stop receiving resume notifications for default channel (0)
+ * offAudioResume(1); // Stop receiving resume notifications for channel 1
  * ```
  */
-const offAudioResume = (channelNumber) => {
+const offAudioResume = (channelNumber = 0) => {
     const channel = exports.audioChannels[channelNumber];
     if (!(channel === null || channel === void 0 ? void 0 : channel.audioResumeCallbacks))
         return;
@@ -492,13 +497,14 @@ const offAudioResume = (channelNumber) => {
 exports.offAudioResume = offAudioResume;
 /**
  * Removes audio start event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioStart(0); // Stop receiving start notifications for channel 0
+ * offAudioStart(); // Stop receiving start notifications for default channel (0)
+ * offAudioStart(1); // Stop receiving start notifications for channel 1
  * ```
  */
-const offAudioStart = (channelNumber) => {
+const offAudioStart = (channelNumber = 0) => {
     const channel = exports.audioChannels[channelNumber];
     if (!(channel === null || channel === void 0 ? void 0 : channel.audioStartCallbacks))
         return;
@@ -507,13 +513,14 @@ const offAudioStart = (channelNumber) => {
 exports.offAudioStart = offAudioStart;
 /**
  * Removes audio complete event listeners for a specific channel
- * @param channelNumber - The channel number
+ * @param channelNumber - The channel number (defaults to 0)
  * @example
  * ```typescript
- * offAudioComplete(0); // Stop receiving completion notifications for channel 0
+ * offAudioComplete(); // Stop receiving completion notifications for default channel (0)
+ * offAudioComplete(1); // Stop receiving completion notifications for channel 1
  * ```
  */
-const offAudioComplete = (channelNumber) => {
+const offAudioComplete = (channelNumber = 0) => {
     const channel = exports.audioChannels[channelNumber];
     if (!(channel === null || channel === void 0 ? void 0 : channel.audioCompleteCallbacks))
         return;

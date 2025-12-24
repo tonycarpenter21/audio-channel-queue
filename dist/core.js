@@ -183,7 +183,7 @@ const checkQueueLimit = (channel, channelNumber, maxQueueSize) => {
             (0, events_1.cleanupProgressTracking)(removedAudio, channelNumber, info_1.audioChannels);
             if (globalQueueConfig.showQueueWarnings) {
                 // eslint-disable-next-line no-console
-                console.info(`Dropped oldest queued item to make room for new audio`);
+                console.warn(`Dropped oldest queued item to make room for new audio`);
             }
             return true;
         }
@@ -244,6 +244,8 @@ const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...
     (0, errors_1.setupAudioErrorHandling)(audio, channelNumber, validatedUrl, (error) => __awaiter(void 0, void 0, void 0, function* () {
         yield (0, errors_1.handleAudioError)(audio, channelNumber, validatedUrl, error);
     }));
+    // Initialize Web Audio API support if needed
+    yield (0, volume_1.initializeWebAudioForAudio)(audio, channelNumber);
     // Apply options if provided
     if (options) {
         if (typeof options.loop === 'boolean') {
@@ -260,9 +262,9 @@ const queueAudio = (audioUrl_1, ...args_1) => __awaiter(void 0, [audioUrl_1, ...
             channel.maxQueueSize = options.maxQueueSize;
         }
     }
-    // Handle priority option (same as addToFront for backward compatibility)
-    const shouldAddToFront = (options === null || options === void 0 ? void 0 : options.addToFront) || (options === null || options === void 0 ? void 0 : options.priority);
-    // Add to queue based on priority/addToFront option
+    // Handle addToFront option
+    const shouldAddToFront = options === null || options === void 0 ? void 0 : options.addToFront;
+    // Add to queue based on addToFront option
     if (shouldAddToFront && channel.queue.length > 0) {
         // Insert after currently playing track (at index 1)
         channel.queue.splice(1, 0, audio);
@@ -316,9 +318,10 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
     if (!channel || channel.queue.length === 0)
         return;
     const currentAudio = channel.queue[0];
-    // Apply channel volume if not already set
+    // Apply channel volume with global volume multiplier if not already set
     if (currentAudio.volume === 1.0 && channel.volume !== undefined) {
-        currentAudio.volume = channel.volume;
+        const globalVolume = (0, volume_1.getGlobalVolume)();
+        currentAudio.volume = channel.volume * globalVolume;
     }
     (0, events_1.setupProgressTracking)(currentAudio, channelNumber, info_1.audioChannels);
     // Apply volume ducking when audio starts
@@ -378,6 +381,7 @@ const playAudioQueue = (channelNumber) => __awaiter(void 0, void 0, void 0, func
                 // For non-looping audio, remove from queue and play next
                 currentAudio.pause();
                 (0, events_1.cleanupProgressTracking)(currentAudio, channelNumber, info_1.audioChannels);
+                (0, volume_1.cleanupWebAudioForAudio)(currentAudio, channelNumber);
                 channel.queue.shift();
                 channel.isPaused = false; // Reset pause state
                 // Restore volume levels AFTER removing audio from queue

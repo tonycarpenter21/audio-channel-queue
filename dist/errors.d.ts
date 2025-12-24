@@ -1,7 +1,7 @@
 /**
  * @fileoverview Error handling, retry logic, and recovery mechanisms for the audio-channel-queue package
  */
-import { AudioErrorInfo, AudioErrorCallback, RetryConfig, ErrorRecoveryOptions, ExtendedAudioQueueChannel } from './types';
+import { AudioErrorInfo, AudioErrorCallback, AudioErrorType, RetryConfig, ErrorRecoveryOptions, ExtendedAudioQueueChannel } from './types';
 /**
  * Subscribes to audio error events for a specific channel
  * @param channelNumber - The channel number to listen to (defaults to 0)
@@ -61,10 +61,10 @@ export declare const getRetryConfig: () => RetryConfig;
  * ```typescript
  * setErrorRecovery({
  *   autoRetry: true,
- *   showUserFeedback: true,
+ *   fallbackToNextTrack: true,
  *   logErrorsToAnalytics: true,
  *   preserveQueueOnError: true,
- *   fallbackToNextTrack: true
+ *   showUserFeedback: true
  * });
  * ```
  */
@@ -109,7 +109,7 @@ export declare const emitAudioError: (channelNumber: number, errorInfo: AudioErr
  * @returns The categorized error type
  * @internal
  */
-export declare const categorizeError: (error: Error, audio: HTMLAudioElement) => AudioErrorInfo["errorType"];
+export declare const categorizeError: (error: Error, audio: HTMLAudioElement) => AudioErrorType;
 /**
  * Sets up comprehensive error handling for an audio element
  * @param audio - The audio element to set up error handling for

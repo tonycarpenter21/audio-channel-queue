@@ -12,13 +12,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cancelAllVolumeTransitions = exports.cancelVolumeTransition = exports.restoreVolumeLevels = exports.fadeVolume = exports.applyVolumeDucking = exports.clearVolumeDucking = exports.setVolumeDucking = exports.setAllChannelsVolume = exports.getAllChannelsVolume = exports.getChannelVolume = exports.setChannelVolume = exports.transitionVolume = exports.getFadeConfig = void 0;
+exports.cleanupWebAudioForAudio = exports.initializeWebAudioForAudio = exports.cancelAllVolumeTransitions = exports.cancelVolumeTransition = exports.restoreVolumeLevels = exports.applyVolumeDucking = exports.clearVolumeDucking = exports.setVolumeDucking = exports.getGlobalVolume = exports.setGlobalVolume = exports.setAllChannelsVolume = exports.getAllChannelsVolume = exports.getChannelVolume = exports.setChannelVolume = exports.transitionVolume = exports.getFadeConfig = void 0;
 const types_1 = require("./types");
 const info_1 = require("./info");
+const web_audio_1 = require("./web-audio");
 // Store active volume transitions to handle interruptions
 const activeTransitions = new Map();
 // Track which timer type was used for each channel
 const timerTypes = new Map();
+/**
+ * Global volume multiplier that affects all channels
+ * Acts as a global volume control (0-1)
+ */
+let globalVolume = 1.0;
 /**
  * Global volume ducking configuration
  * Stores the volume ducking settings that apply to all channels
@@ -81,10 +87,19 @@ const easingFunctions = {
  */
 const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __awaiter(void 0, [channelNumber_1, targetVolume_1, ...args_1], void 0, function* (channelNumber, targetVolume, duration = 250, easing = types_1.EasingType.EaseOut) {
     const channel = info_1.audioChannels[channelNumber];
-    if (!channel || channel.queue.length === 0)
+    if (!channel || channel.queue.length === 0) {
         return;
+    }
     const currentAudio = channel.queue[0];
-    const startVolume = currentAudio.volume;
+    // When Web Audio is active, read the actual start volume from the gain node
+    // This is critical for iOS where audio.volume is ignored when Web Audio is active
+    let startVolume = currentAudio.volume;
+    if (channel.webAudioNodes) {
+        const nodes = channel.webAudioNodes.get(currentAudio);
+        if (nodes) {
+            startVolume = nodes.gainNode.gain.value;
+        }
+    }
     const volumeDelta = targetVolume - startVolume;
     // Cancel any existing transition for this channel
     if (activeTransitions.has(channelNumber)) {
@@ -119,7 +134,7 @@ const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __await
     const startTime = performance.now();
     const easingFn = easingFunctions[easing];
     return new Promise((resolve) => {
-        const updateVolume = () => {
+        const updateVolume = () => __awaiter(void 0, void 0, void 0, function* () {
             const elapsed = performance.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const easedProgress = easingFn(progress);
@@ -128,7 +143,7 @@ const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __await
             // Apply volume to both channel config and current audio
             channel.volume = clampedVolume;
             if (channel.queue.length > 0) {
-                channel.queue[0].volume = clampedVolume;
+                yield setVolumeForAudio(channel.queue[0], clampedVolume, channelNumber);
             }
             if (progress >= 1) {
                 // Transition complete
@@ -139,24 +154,25 @@ const transitionVolume = (channelNumber_1, targetVolume_1, ...args_1) => __await
             else {
                 // Use requestAnimationFrame in browser, setTimeout in tests
                 if (typeof requestAnimationFrame !== 'undefined') {
-                    const rafId = requestAnimationFrame(updateVolume);
+                    const rafId = requestAnimationFrame(() => updateVolume());
                     activeTransitions.set(channelNumber, rafId);
                     timerTypes.set(channelNumber, types_1.TimerType.RequestAnimationFrame);
                 }
                 else {
                     // In test environment, use shorter intervals
-                    const timeoutId = setTimeout(updateVolume, 1);
+                    const timeoutId = setTimeout(() => updateVolume(), 1);
                     activeTransitions.set(channelNumber, timeoutId);
                     timerTypes.set(channelNumber, types_1.TimerType.Timeout);
                 }
             }
-        };
+        });
         updateVolume();
     });
 });
 exports.transitionVolume = transitionVolume;
 /**
  * Sets the volume for a specific channel with optional smooth transition
+ * Automatically uses Web Audio API on iOS devices for enhanced volume control
  * @param channelNumber - The channel number to set volume for
  * @param volume - Volume level (0-1)
  * @param transitionDuration - Optional transition duration in milliseconds
@@ -192,17 +208,21 @@ const setChannelVolume = (channelNumber, volume, transitionDuration, easing) => 
         };
         return;
     }
+    const channel = info_1.audioChannels[channelNumber];
+    // Initialize Web Audio API if needed and supported
+    if ((0, web_audio_1.shouldUseWebAudio)() && !channel.webAudioContext) {
+        yield initializeWebAudioForChannel(channelNumber);
+    }
     if (transitionDuration && transitionDuration > 0) {
         // Smooth transition
         yield (0, exports.transitionVolume)(channelNumber, clampedVolume, transitionDuration, easing);
     }
     else {
         // Instant change (backward compatibility)
-        info_1.audioChannels[channelNumber].volume = clampedVolume;
-        const channel = info_1.audioChannels[channelNumber];
+        channel.volume = clampedVolume;
         if (channel.queue.length > 0) {
             const currentAudio = channel.queue[0];
-            currentAudio.volume = clampedVolume;
+            yield setVolumeForAudio(currentAudio, clampedVolume, channelNumber);
         }
     }
 });
@@ -255,6 +275,48 @@ const setAllChannelsVolume = (volume) => __awaiter(void 0, void 0, void 0, funct
     yield Promise.all(promises);
 });
 exports.setAllChannelsVolume = setAllChannelsVolume;
+/**
+ * Sets the global volume multiplier that affects all channels
+ * This acts as a global volume control - individual channel volumes are multiplied by this value
+ * @param volume - Global volume level (0-1, will be clamped to this range)
+ * @example
+ * ```typescript
+ * // Set channel-specific volumes
+ * await setChannelVolume(0, 0.8); // SFX at 80%
+ * await setChannelVolume(1, 0.6); // Music at 60%
+ *
+ * // Apply global volume of 50% - all channels play at half their set volume
+ * await setGlobalVolume(0.5); // SFX now plays at 40%, music at 30%
+ * ```
+ */
+const setGlobalVolume = (volume) => __awaiter(void 0, void 0, void 0, function* () {
+    // Clamp to valid range
+    globalVolume = Math.max(0, Math.min(1, volume));
+    // Update all currently playing audio to reflect the new global volume
+    // Note: setVolumeForAudio internally multiplies channel.volume by globalVolume
+    const updatePromises = [];
+    info_1.audioChannels.forEach((channel, channelNumber) => {
+        if (channel && channel.queue.length > 0) {
+            const currentAudio = channel.queue[0];
+            updatePromises.push(setVolumeForAudio(currentAudio, channel.volume, channelNumber));
+        }
+    });
+    yield Promise.all(updatePromises);
+});
+exports.setGlobalVolume = setGlobalVolume;
+/**
+ * Gets the current global volume multiplier
+ * @returns Current global volume level (0-1), defaults to 1.0
+ * @example
+ * ```typescript
+ * const globalVol = getGlobalVolume();
+ * console.log(`Global volume is ${globalVol * 100}%`);
+ * ```
+ */
+const getGlobalVolume = () => {
+    return globalVolume;
+};
+exports.getGlobalVolume = getGlobalVolume;
 /**
  * Configures volume ducking for channels. When the priority channel plays audio,
  * all other channels will be automatically reduced to the ducking volume level
@@ -333,36 +395,19 @@ const applyVolumeDucking = (activeChannelNumber) => __awaiter(void 0, void 0, vo
             // This is the priority channel - set to priority volume
             // Only change audio volume, preserve channel.volume as desired volume
             const currentAudio = channel.queue[0];
-            transitionPromises.push(transitionAudioVolume(currentAudio, config.priorityVolume, duration, easing));
+            transitionPromises.push(transitionAudioVolume(currentAudio, config.priorityVolume, duration, easing, channelNumber));
         }
         else {
             // This is a background channel - duck it
             // Only change audio volume, preserve channel.volume as desired volume
             const currentAudio = channel.queue[0];
-            transitionPromises.push(transitionAudioVolume(currentAudio, config.duckingVolume, duration, easing));
+            transitionPromises.push(transitionAudioVolume(currentAudio, config.duckingVolume, duration, easing, channelNumber));
         }
     });
     // Wait for all transitions to complete
     yield Promise.all(transitionPromises);
 });
 exports.applyVolumeDucking = applyVolumeDucking;
-/**
- * Fades the volume for a specific channel over time (alias for transitionVolume with improved naming)
- * @param channelNumber - The channel number to fade
- * @param targetVolume - Target volume level (0-1)
- * @param duration - Fade duration in milliseconds (defaults to 250)
- * @param easing - Easing function type (defaults to 'ease-out')
- * @returns Promise that resolves when fade completes
- * @example
- * ```typescript
- * await fadeVolume(0, 0, 800, 'ease-in'); // Fade out over 800ms
- * await fadeVolume(0, 1, 600, 'ease-out'); // Fade in over 600ms
- * ```
- */
-const fadeVolume = (channelNumber_1, targetVolume_1, ...args_1) => __awaiter(void 0, [channelNumber_1, targetVolume_1, ...args_1], void 0, function* (channelNumber, targetVolume, duration = 250, easing = types_1.EasingType.EaseOut) {
-    return (0, exports.transitionVolume)(channelNumber, targetVolume, duration, easing);
-});
-exports.fadeVolume = fadeVolume;
 /**
  * Restores normal volume levels when priority channel queue becomes empty
  * @param stoppedChannelNumber - The channel that just stopped playing
@@ -388,12 +433,12 @@ const restoreVolumeLevels = (stoppedChannelNumber) => __awaiter(void 0, void 0, 
             return;
         }
         // Restore this channel to its desired volume
-        const duration = (_a = config.restoreTransitionDuration) !== null && _a !== void 0 ? _a : 500;
+        const duration = (_a = config.restoreTransitionDuration) !== null && _a !== void 0 ? _a : 250;
         const easing = (_b = config.transitionEasing) !== null && _b !== void 0 ? _b : types_1.EasingType.EaseOut;
         const targetVolume = (_c = channel.volume) !== null && _c !== void 0 ? _c : 1.0;
         // Only transition the audio element volume, keep channel.volume as the desired volume
         const currentAudio = channel.queue[0];
-        transitionPromises.push(transitionAudioVolume(currentAudio, targetVolume, duration, easing));
+        transitionPromises.push(transitionAudioVolume(currentAudio, targetVolume, duration, easing, channelNumber));
     });
     // Wait for all transitions to complete
     yield Promise.all(transitionPromises);
@@ -402,23 +447,42 @@ exports.restoreVolumeLevels = restoreVolumeLevels;
 /**
  * Transitions only the audio element volume without affecting channel.volume
  * This is used for ducking/restoration where channel.volume represents desired volume
+ * Uses Web Audio API when available for enhanced volume control
  * @param audio - The audio element to transition
  * @param targetVolume - Target volume level (0-1)
  * @param duration - Transition duration in milliseconds
  * @param easing - Easing function type
+ * @param channelNumber - The channel number this audio belongs to (for Web Audio API)
  * @returns Promise that resolves when transition completes
  * @internal
  */
-const transitionAudioVolume = (audio_1, targetVolume_1, ...args_1) => __awaiter(void 0, [audio_1, targetVolume_1, ...args_1], void 0, function* (audio, targetVolume, duration = 250, easing = types_1.EasingType.EaseOut) {
+const transitionAudioVolume = (audio_1, targetVolume_1, ...args_1) => __awaiter(void 0, [audio_1, targetVolume_1, ...args_1], void 0, function* (audio, targetVolume, duration = 250, easing = types_1.EasingType.EaseOut, channelNumber) {
+    // Apply global volume multiplier
+    const actualTargetVolume = targetVolume * globalVolume;
+    // Try to use Web Audio API if available and channel number is provided
+    if (channelNumber !== undefined) {
+        const channel = info_1.audioChannels[channelNumber];
+        if ((channel === null || channel === void 0 ? void 0 : channel.webAudioContext) && channel.webAudioNodes) {
+            const nodes = channel.webAudioNodes.get(audio);
+            if (nodes) {
+                // Use Web Audio API for smooth transitions
+                (0, web_audio_1.setWebAudioVolume)(nodes.gainNode, actualTargetVolume, duration);
+                // Also update the audio element's volume property for consistency
+                audio.volume = actualTargetVolume;
+                return;
+            }
+        }
+    }
+    // Fallback to standard HTMLAudioElement volume control with manual transition
     const startVolume = audio.volume;
-    const volumeDelta = targetVolume - startVolume;
+    const volumeDelta = actualTargetVolume - startVolume;
     // If no change needed, resolve immediately
     if (Math.abs(volumeDelta) < 0.001) {
         return Promise.resolve();
     }
     // Handle zero or negative duration - instant change
     if (duration <= 0) {
-        audio.volume = Math.max(0, Math.min(1, targetVolume));
+        audio.volume = actualTargetVolume;
         return Promise.resolve();
     }
     const startTime = performance.now();
@@ -441,7 +505,8 @@ const transitionAudioVolume = (audio_1, targetVolume_1, ...args_1) => __awaiter(
                     requestAnimationFrame(updateVolume);
                 }
                 else {
-                    setTimeout(updateVolume, 1);
+                    // In test environment, use longer intervals to prevent stack overflow
+                    setTimeout(updateVolume, 16);
                 }
             }
         };
@@ -484,3 +549,96 @@ const cancelAllVolumeTransitions = () => {
     });
 };
 exports.cancelAllVolumeTransitions = cancelAllVolumeTransitions;
+/**
+ * Initializes Web Audio API for a specific channel
+ * @param channelNumber - The channel number to initialize Web Audio for
+ * @internal
+ */
+const initializeWebAudioForChannel = (channelNumber) => __awaiter(void 0, void 0, void 0, function* () {
+    const channel = info_1.audioChannels[channelNumber];
+    if (!channel || channel.webAudioContext)
+        return;
+    const audioContext = (0, web_audio_1.getAudioContext)();
+    if (!audioContext) {
+        throw new Error('AudioContext creation failed');
+    }
+    // Resume audio context if needed (for autoplay policy)
+    yield (0, web_audio_1.resumeAudioContext)(audioContext);
+    channel.webAudioContext = audioContext;
+    channel.webAudioNodes = new Map();
+    // Initialize Web Audio nodes for existing audio elements
+    for (const audio of channel.queue) {
+        const nodes = (0, web_audio_1.createWebAudioNodes)(audio, audioContext);
+        if (!nodes) {
+            throw new Error('Node creation failed');
+        }
+        channel.webAudioNodes.set(audio, nodes);
+        // Set initial volume to match channel volume
+        nodes.gainNode.gain.value = channel.volume;
+    }
+});
+/**
+ * Sets volume for an audio element using the appropriate method (Web Audio API or standard)
+ * @param audio - The audio element to set volume for
+ * @param volume - Channel volume level (0-1) - will be multiplied by global volume
+ * @param channelNumber - The channel number this audio belongs to
+ * @param transitionDuration - Optional transition duration in milliseconds
+ * @internal
+ */
+const setVolumeForAudio = (audio, volume, channelNumber, transitionDuration) => __awaiter(void 0, void 0, void 0, function* () {
+    const channel = info_1.audioChannels[channelNumber];
+    // Apply global volume multiplier to the channel volume
+    const actualVolume = volume * globalVolume;
+    // Use Web Audio API if available and initialized
+    if ((channel === null || channel === void 0 ? void 0 : channel.webAudioContext) && channel.webAudioNodes) {
+        const nodes = channel.webAudioNodes.get(audio);
+        if (nodes) {
+            (0, web_audio_1.setWebAudioVolume)(nodes.gainNode, actualVolume, transitionDuration);
+            return;
+        }
+    }
+    // Fallback to standard HTMLAudioElement volume control
+    audio.volume = actualVolume;
+});
+/**
+ * Initializes Web Audio API nodes for a new audio element
+ * @param audio - The audio element to initialize nodes for
+ * @param channelNumber - The channel number this audio belongs to
+ * @internal
+ */
+const initializeWebAudioForAudio = (audio, channelNumber) => __awaiter(void 0, void 0, void 0, function* () {
+    const channel = info_1.audioChannels[channelNumber];
+    if (!channel)
+        return;
+    // Initialize Web Audio API for the channel if needed
+    if ((0, web_audio_1.shouldUseWebAudio)() && !channel.webAudioContext) {
+        yield initializeWebAudioForChannel(channelNumber);
+    }
+    // Create nodes for this specific audio element
+    if (channel.webAudioContext && channel.webAudioNodes && !channel.webAudioNodes.has(audio)) {
+        const nodes = (0, web_audio_1.createWebAudioNodes)(audio, channel.webAudioContext);
+        if (nodes) {
+            channel.webAudioNodes.set(audio, nodes);
+            // Set initial volume to match channel volume with global volume multiplier
+            nodes.gainNode.gain.value = channel.volume * globalVolume;
+        }
+    }
+});
+exports.initializeWebAudioForAudio = initializeWebAudioForAudio;
+/**
+ * Cleans up Web Audio API nodes for an audio element
+ * @param audio - The audio element to clean up nodes for
+ * @param channelNumber - The channel number this audio belongs to
+ * @internal
+ */
+const cleanupWebAudioForAudio = (audio, channelNumber) => {
+    const channel = info_1.audioChannels[channelNumber];
+    if (!(channel === null || channel === void 0 ? void 0 : channel.webAudioNodes))
+        return;
+    const nodes = channel.webAudioNodes.get(audio);
+    if (nodes) {
+        (0, web_audio_1.cleanupWebAudioNodes)(nodes);
+        channel.webAudioNodes.delete(audio);
+    }
+};
+exports.cleanupWebAudioForAudio = cleanupWebAudioForAudio;

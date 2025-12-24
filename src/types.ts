@@ -286,6 +286,42 @@ export interface ErrorRecoveryOptions {
 export type AudioErrorCallback = (errorInfo: AudioErrorInfo) => void;
 
 /**
+ * Web Audio API configuration options
+ */
+export interface WebAudioConfig {
+  /** Whether to automatically use Web Audio API on iOS devices */
+  autoDetectIOS: boolean;
+  /** Whether Web Audio API support is enabled */
+  enabled: boolean;
+  /** Whether to force Web Audio API usage on all devices */
+  forceWebAudio: boolean;
+}
+
+/**
+ * Web Audio API support information
+ */
+export interface WebAudioSupport {
+  /** Whether Web Audio API is available in the current environment */
+  available: boolean;
+  /** Whether the current device is iOS */
+  isIOS: boolean;
+  /** Whether Web Audio API is currently being used */
+  usingWebAudio: boolean;
+  /** Reason for current Web Audio API usage state */
+  reason: string;
+}
+
+/**
+ * Web Audio API node set for audio element control
+ */
+export interface WebAudioNodeSet {
+  /** Gain node for volume control */
+  gainNode: GainNode;
+  /** Media element source node */
+  sourceNode: MediaElementAudioSourceNode;
+}
+
+/**
  * Extended audio channel with comprehensive queue management, callback support, and state tracking
  */
 export interface ExtendedAudioQueueChannel {
@@ -317,6 +353,10 @@ export interface ExtendedAudioQueueChannel {
   retryConfig?: RetryConfig;
   /** Current volume level for the channel (0-1) */
   volume: number;
+  /** Web Audio API context for this channel */
+  webAudioContext?: AudioContext;
+  /** Map of Web Audio API nodes for each audio element */
+  webAudioNodes?: Map<HTMLAudioElement, WebAudioNodeSet>;
 }
 
 /**

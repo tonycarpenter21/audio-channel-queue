@@ -24,15 +24,15 @@ export interface AudioQueueChannel {
  * Volume ducking configuration for channels
  */
 export interface VolumeConfig {
+    /** Duration in milliseconds for volume duck transition (defaults to 250ms) */
+    duckTransitionDuration?: number;
+    /** Volume level for all other channels when priority channel is active (0-1) */
+    duckingVolume: number;
     /** The channel number that should have priority */
     priorityChannel: number;
     /** Volume level for the priority channel (0-1) */
     priorityVolume: number;
-    /** Volume level for all other channels when priority channel is active (0-1) */
-    duckingVolume: number;
-    /** Duration in milliseconds for volume duck transition (defaults to 250ms) */
-    duckTransitionDuration?: number;
-    /** Duration in milliseconds for volume restore transition (defaults to 500ms) */
+    /** Duration in milliseconds for volume restore transition (defaults to 250ms) */
     restoreTransitionDuration?: number;
     /** Easing function for volume transitions (defaults to 'ease-out') */
     transitionEasing?: EasingType;
@@ -47,8 +47,6 @@ export interface AudioQueueOptions {
     loop?: boolean;
     /** Maximum number of items allowed in the queue (defaults to unlimited) */
     maxQueueSize?: number;
-    /** @deprecated Use addToFront instead. Legacy support for priority queuing */
-    priority?: boolean;
     /** Volume level for this specific audio (0-1) */
     volume?: number;
 }
@@ -192,67 +190,148 @@ export type AudioPauseCallback = (channelNumber: number, audioInfo: AudioInfo) =
  */
 export type AudioResumeCallback = (channelNumber: number, audioInfo: AudioInfo) => void;
 /**
- * Information about an audio error that occurred
+ * Types of audio errors that can occur during playback
+ */
+export declare enum AudioErrorType {
+    Abort = "abort",
+    Decode = "decode",
+    Network = "network",
+    Permission = "permission",
+    Timeout = "timeout",
+    Unknown = "unknown",
+    Unsupported = "unsupported"
+}
+/**
+ * Information about an audio error that occurred during playback or loading
  */
 export interface AudioErrorInfo {
+    /** Channel number where the error occurred */
     channelNumber: number;
-    src: string;
-    fileName: string;
+    /** The actual error object that was thrown */
     error: Error;
-    errorType: 'network' | 'decode' | 'unsupported' | 'permission' | 'abort' | 'timeout' | 'unknown';
-    timestamp: number;
-    retryAttempt?: number;
+    /** Categorized type of error for handling different scenarios */
+    errorType: AudioErrorType;
+    /** Extracted filename from the source URL */
+    fileName: string;
+    /** Number of audio files remaining in the queue after this error */
     remainingInQueue: number;
+    /** Current retry attempt number (if retrying is enabled) */
+    retryAttempt?: number;
+    /** Audio file source URL that failed */
+    src: string;
+    /** Unix timestamp when the error occurred */
+    timestamp: number;
 }
 /**
  * Configuration for automatic retry behavior when audio fails to load or play
  */
 export interface RetryConfig {
-    enabled: boolean;
-    maxRetries: number;
+    /** Initial delay in milliseconds before first retry attempt */
     baseDelay: number;
+    /** Whether automatic retries are enabled for this channel */
+    enabled: boolean;
+    /** Whether to use exponential backoff (doubling delay each retry) */
     exponentialBackoff: boolean;
-    timeoutMs: number;
-    fallbackUrls?: string[];
+    /** Alternative URLs to try if the primary source fails */
+    fallbackUrls: string[];
+    /** Maximum number of retry attempts before giving up */
+    maxRetries: number;
+    /** Whether to skip to next track in queue if all retries fail */
     skipOnFailure: boolean;
+    /** Timeout in milliseconds for each individual retry attempt */
+    timeoutMs: number;
 }
 /**
- * Configuration options for error recovery mechanisms
+ * Configuration options for error recovery mechanisms across the audio system
  */
 export interface ErrorRecoveryOptions {
+    /** Whether to automatically retry failed audio loads/plays */
     autoRetry: boolean;
-    showUserFeedback: boolean;
-    logErrorsToAnalytics: boolean;
-    preserveQueueOnError: boolean;
+    /** Whether to automatically skip to next track when current fails */
     fallbackToNextTrack: boolean;
+    /** Whether to send error data to analytics systems */
+    logErrorsToAnalytics: boolean;
+    /** Whether to maintain queue integrity when errors occur */
+    preserveQueueOnError: boolean;
+    /** Whether to display user-visible error feedback */
+    showUserFeedback: boolean;
 }
 /**
  * Callback function type for audio error events
  */
 export type AudioErrorCallback = (errorInfo: AudioErrorInfo) => void;
 /**
- * Extended audio channel with queue management and callback support
+ * Web Audio API configuration options
+ */
+export interface WebAudioConfig {
+    /** Whether to automatically use Web Audio API on iOS devices */
+    autoDetectIOS: boolean;
+    /** Whether Web Audio API support is enabled */
+    enabled: boolean;
+    /** Whether to force Web Audio API usage on all devices */
+    forceWebAudio: boolean;
+}
+/**
+ * Web Audio API support information
+ */
+export interface WebAudioSupport {
+    /** Whether Web Audio API is available in the current environment */
+    available: boolean;
+    /** Whether the current device is iOS */
+    isIOS: boolean;
+    /** Whether Web Audio API is currently being used */
+    usingWebAudio: boolean;
+    /** Reason for current Web Audio API usage state */
+    reason: string;
+}
+/**
+ * Web Audio API node set for audio element control
+ */
+export interface WebAudioNodeSet {
+    /** Gain node for volume control */
+    gainNode: GainNode;
+    /** Media element source node */
+    sourceNode: MediaElementAudioSourceNode;
+}
+/**
+ * Extended audio channel with comprehensive queue management, callback support, and state tracking
  */
 export interface ExtendedAudioQueueChannel {
+    /** Set of callbacks triggered when audio completes playback */
     audioCompleteCallbacks: Set<AudioCompleteCallback>;
+    /** Set of callbacks triggered when audio errors occur */
     audioErrorCallbacks: Set<AudioErrorCallback>;
+    /** Set of callbacks triggered when audio is paused */
     audioPauseCallbacks: Set<AudioPauseCallback>;
+    /** Set of callbacks triggered when audio is resumed */
     audioResumeCallbacks: Set<AudioResumeCallback>;
+    /** Set of callbacks triggered when audio starts playing */
     audioStartCallbacks: Set<AudioStartCallback>;
+    /** Current fade state if pause/resume with fade is active */
     fadeState?: ChannelFadeState;
+    /** Whether the channel is currently paused */
     isPaused: boolean;
     /** Active operation lock to prevent race conditions */
     isLocked?: boolean;
     /** Maximum allowed queue size for this channel */
     maxQueueSize?: number;
+    /** Map of progress callbacks keyed by audio element or global symbol */
     progressCallbacks: Map<HTMLAudioElement | typeof GLOBAL_PROGRESS_KEY, Set<ProgressCallback>>;
+    /** Array of HTMLAudioElement objects in the queue */
     queue: HTMLAudioElement[];
+    /** Set of callbacks triggered when the queue changes */
     queueChangeCallbacks: Set<QueueChangeCallback>;
+    /** Retry configuration for failed audio loads/plays */
     retryConfig?: RetryConfig;
+    /** Current volume level for the channel (0-1) */
     volume: number;
+    /** Web Audio API context for this channel */
+    webAudioContext?: AudioContext;
+    /** Map of Web Audio API nodes for each audio element */
+    webAudioNodes?: Map<HTMLAudioElement, WebAudioNodeSet>;
 }
 /**
- * Easing function types for volume transitions
+ * Easing function types for smooth volume transitions and animations
  */
 export declare enum EasingType {
     Linear = "linear",
@@ -261,7 +340,7 @@ export declare enum EasingType {
     EaseInOut = "ease-in-out"
 }
 /**
- * Fade type for pause/resume operations with integrated volume transitions
+ * Predefined fade types for pause/resume operations with different transition characteristics
  */
 export declare enum FadeType {
     Linear = "linear",
@@ -269,7 +348,7 @@ export declare enum FadeType {
     Dramatic = "dramatic"
 }
 /**
- * Timer types for volume transitions to ensure proper cleanup
+ * Timer implementation types used for volume transitions to ensure proper cleanup
  */
 export declare enum TimerType {
     RequestAnimationFrame = "raf",

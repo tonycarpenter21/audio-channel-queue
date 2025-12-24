@@ -3,17 +3,30 @@
  */
 
 import {
-  queueAudio,
-  playAudioQueue,
-  stopCurrentAudioInChannel,
-  stopAllAudioInChannel,
-  stopAllAudio,
-  destroyChannel,
   destroyAllChannels,
+  destroyChannel,
+  getQueueConfig,
+  playAudioQueue,
+  queueAudio,
+  queueAudioPriority,
   setChannelQueueLimit,
-  setQueueConfig
+  setQueueConfig,
+  stopAllAudio,
+  stopAllAudioInChannel,
+  stopCurrentAudioInChannel
 } from '../src/core';
-import { audioChannels } from '../src/info';
+import { getQueueLength } from '../src/queue-manipulation';
+import {
+  audioChannels,
+  getQueueSnapshot,
+  onAudioComplete,
+  onAudioStart,
+  onAudioProgress,
+  onQueueChange,
+  onAudioPause,
+  onAudioResume
+} from '../src/info';
+import { onAudioError } from '../src/errors';
 import { toMockAudioElement } from './setup';
 
 // Clear modules before each test to reset state
@@ -314,6 +327,23 @@ describe('Core Queue Management', () => {
       global.Audio = originalAudio;
     });
   });
+
+  describe('queueAudioPriority', () => {
+    it('should add priority audio to second position in queue', async () => {
+      await queueAudio('https://example.com/test1.mp3', 0);
+      await queueAudio('https://example.com/test2.mp3', 0);
+
+      // Add priority item
+      await queueAudioPriority('https://example.com/priority.mp3', 0);
+
+      const queueInfo = getQueueSnapshot(0);
+      expect(queueInfo?.totalItems).toBe(3);
+
+      // Priority item should be second (after currently playing)
+      const urls = queueInfo?.items.map((item) => item.src) ?? [];
+      expect(urls[1]).toBe('https://example.com/priority.mp3');
+    });
+  });
 });
 
 describe('Channel limits and security', () => {
@@ -361,18 +391,7 @@ describe('Channel limits and security', () => {
     expect(() => setChannelQueueLimit(-1, 10)).toThrow('Channel number must be non-negative');
   });
 
-  it('should enforce MAX_CHANNELS in all callback functions', async () => {
-    const { onAudioError } = await import('../src/errors');
-
-    const {
-      onAudioProgress,
-      onQueueChange,
-      onAudioStart,
-      onAudioComplete,
-      onAudioPause,
-      onAudioResume
-    } = await import('../src/info');
-
+  it('should enforce MAX_CHANNELS in all callback functions', () => {
     const mockCallback = jest.fn();
 
     // All callback functions should enforce MAX_CHANNELS limit
@@ -410,17 +429,7 @@ describe('Channel limits and security', () => {
     expect(() => onAudioProgress(-1, mockCallback)).toThrow('Channel number must be non-negative');
   });
 
-  it('should allow valid channel numbers in all functions', async () => {
-    const { onAudioError } = await import('../src/errors');
-    const {
-      onAudioProgress,
-      onQueueChange,
-      onAudioStart,
-      onAudioComplete,
-      onAudioPause,
-      onAudioResume
-    } = await import('../src/info');
-
+  it('should allow valid channel numbers in all functions', () => {
     const mockCallback = jest.fn();
 
     // All functions should accept valid channel numbers (0-63)
@@ -453,18 +462,21 @@ describe('Channel destruction', () => {
   });
 
   it('should completely destroy a channel and clean up resources', async () => {
-    // Set up a channel with audio and callbacks
-    await queueAudio('test1.mp3', 1);
-    await queueAudio('test2.mp3', 1);
+    // Set up a channel with audio
+    await queueAudio('https://example.com/test1.mp3', 1);
+    await queueAudio('https://example.com/test2.mp3', 1);
 
-    expect(audioChannels[1]).toBeDefined();
-    expect(audioChannels[1].queue).toHaveLength(2);
+    // Verify channel exists and has audio
+    expect(getQueueLength(1)).toBe(2);
+    expect(getQueueSnapshot(1)).not.toBeNull();
+    expect(getQueueSnapshot(1)?.items).toHaveLength(2);
 
     // Destroy the channel
     await destroyChannel(1);
 
-    // Channel should be completely removed
-    expect(audioChannels[1]).toBeUndefined();
+    // Verify channel is completely removed using public APIs
+    expect(getQueueLength(1)).toBe(0);
+    expect(getQueueSnapshot(1)).toBeNull();
   });
 
   it('should handle destroying non-existent channels gracefully', async () => {
@@ -487,7 +499,7 @@ describe('Channel destruction', () => {
   });
 });
 
-describe('Queue size limits', () => {
+describe('Queue Size Limits', () => {
   beforeEach(() => {
     audioChannels.length = 0;
     // Reset global queue config
@@ -541,22 +553,35 @@ describe('Queue size limits', () => {
     expect(audioChannels[0].queue.length).toBe(1);
   });
 
-  it('should drop oldest when configured', async () => {
+  it('should drop oldest queued items when dropOldestWhenFull is enabled', async () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+    // Configure to drop oldest when full
     setQueueConfig({
-      defaultMaxQueueSize: 2,
+      defaultMaxQueueSize: 3,
       dropOldestWhenFull: true,
-      showQueueWarnings: false
+      showQueueWarnings: true
     });
 
-    await queueAudio('test1.mp3', 0);
-    await queueAudio('test2.mp3', 0);
+    await queueAudio('https://example.com/test1.mp3', 0);
+    await queueAudio('https://example.com/test2.mp3', 0);
+    await queueAudio('https://example.com/test3.mp3', 0);
 
-    // This should drop test1.mp3 and add test3.mp3
-    await expect(queueAudio('test3.mp3', 0)).resolves.not.toThrow();
+    // This should drop the oldest queued item (test2) and add test4
+    await queueAudio('https://example.com/test4.mp3', 0);
 
-    expect(audioChannels[0].queue.length).toBe(2);
-    expect(audioChannels[0].queue[0].src).toBe('test1.mp3'); // Currently playing - not dropped
-    expect(audioChannels[0].queue[1].src).toBe('test3.mp3'); // test2.mp3 was dropped
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Queue limit reached for channel 0')
+    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Dropped oldest queued item')
+    );
+
+    const queueLength = getQueueLength();
+    expect(queueLength).toBe(3);
+    expect(audioChannels[0].queue[0].src).toBe('https://example.com/test1.mp3'); // Currently playing - not dropped
+    expect(audioChannels[0].queue[1].src).toBe('https://example.com/test3.mp3'); // test2 was dropped
+    expect(audioChannels[0].queue[2].src).toBe('https://example.com/test4.mp3'); // New item added
   });
 
   it('should not drop currently playing audio', async () => {
@@ -574,5 +599,149 @@ describe('Queue size limits', () => {
     );
 
     expect(audioChannels[0].queue.length).toBe(1);
+  });
+
+  it('should handle unlimited queue when no limits are set', async () => {
+    // Clear all limits
+    setQueueConfig({ defaultMaxQueueSize: undefined });
+    setChannelQueueLimit(0, undefined);
+
+    // Should be able to add many items
+    for (let i = 0; i < 10; i++) {
+      await queueAudio(`https://example.com/test${i}.mp3`, 0);
+    }
+
+    const queueLength = getQueueLength();
+    expect(queueLength).toBe(10);
+  });
+
+  it('should validate channel number limits', () => {
+    expect(() => setChannelQueueLimit(-1, 10)).toThrow('Channel number must be non-negative');
+    expect(() => setChannelQueueLimit(1000, 10)).toThrow('exceeds maximum allowed channels');
+  });
+});
+
+describe('Audio Element Lifecycle', () => {
+  it('should handle audio element creation and setup', async () => {
+    await queueAudio('https://example.com/test.mp3', 0);
+
+    const mockAudio = toMockAudioElement(audioChannels[0].queue[0]);
+
+    // Mock addEventListener to track event setup
+    const addEventListenerSpy = jest.spyOn(mockAudio, 'addEventListener');
+
+    // The audio element should have event listeners set up
+    expect(mockAudio.addEventListener).toHaveBeenCalled();
+
+    addEventListenerSpy.mockRestore();
+  });
+
+  it('should handle audio start event firing', async () => {
+    let startEventFired = false;
+
+    onAudioStart(0, () => {
+      startEventFired = true;
+    });
+
+    await queueAudio('https://example.com/test.mp3', 0);
+
+    // Simulate play event
+    const audio = audioChannels[0].queue[0];
+    audio.dispatchEvent(new Event('play'));
+
+    expect(startEventFired).toBe(true);
+  });
+
+  it('should handle ended event and continue to next track', async () => {
+    let completeEventFired = false;
+
+    onAudioComplete(0, () => {
+      completeEventFired = true;
+    });
+
+    await queueAudio('https://example.com/test1.mp3', 0);
+    await queueAudio('https://example.com/test2.mp3', 0);
+
+    const audio = audioChannels[0].queue[0];
+
+    // Simulate ended event
+    audio.dispatchEvent(new Event('ended'));
+
+    // Wait for async operations
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(completeEventFired).toBe(true);
+  });
+});
+
+describe('Operation Lock Management', () => {
+  beforeEach(() => {
+    audioChannels.length = 0;
+    // Clear any queue limits that might interfere
+    setQueueConfig({
+      defaultMaxQueueSize: undefined,
+      dropOldestWhenFull: false,
+      showQueueWarnings: false
+    });
+    setChannelQueueLimit(0, undefined);
+  });
+
+  it('should handle operation lock contention gracefully', async () => {
+    await queueAudio('https://example.com/test.mp3', 0);
+
+    // Test that operations complete even with potential lock contention
+    await expect(queueAudio('https://example.com/test2.mp3', 0)).resolves.not.toThrow();
+
+    // Verify the queue has both items
+    const queueLength = getQueueLength();
+    expect(queueLength).toBe(2);
+  });
+
+  it('should handle concurrent operations with lock contention', async () => {
+    await queueAudio('https://example.com/test1.mp3', 0);
+
+    // Start multiple operations concurrently
+    const promises: Promise<void>[] = [];
+    for (let i = 0; i < 5; i++) {
+      promises.push(queueAudio(`https://example.com/test${i}.mp3`, 0));
+    }
+
+    // All should complete successfully
+    await Promise.all(promises);
+
+    const queueLength = getQueueLength();
+    expect(queueLength).toBeGreaterThan(0);
+  });
+});
+
+describe('Configuration Management', () => {
+  it('should handle queue configuration changes', () => {
+    const originalConfig = getQueueConfig();
+
+    setQueueConfig({
+      defaultMaxQueueSize: 25,
+      dropOldestWhenFull: false,
+      showQueueWarnings: false
+    });
+
+    const newConfig = getQueueConfig();
+    expect(newConfig.defaultMaxQueueSize).toBe(25);
+    expect(newConfig.dropOldestWhenFull).toBe(false);
+    expect(newConfig.showQueueWarnings).toBe(false);
+
+    // Restore original
+    setQueueConfig(originalConfig);
+  });
+
+  it('should handle partial configuration updates', () => {
+    const originalConfig = getQueueConfig();
+
+    setQueueConfig({ defaultMaxQueueSize: 15 });
+
+    const newConfig = getQueueConfig();
+    expect(newConfig.defaultMaxQueueSize).toBe(15);
+    // Other properties should remain unchanged
+    expect(newConfig.dropOldestWhenFull).toBe(originalConfig.dropOldestWhenFull);
+    expect(newConfig.showQueueWarnings).toBe(originalConfig.showQueueWarnings);
   });
 });

@@ -12,7 +12,14 @@ import {
   setupProgressTracking,
   cleanupProgressTracking
 } from './events';
-import { applyVolumeDucking, restoreVolumeLevels, cancelVolumeTransition } from './volume';
+import {
+  applyVolumeDucking,
+  cancelVolumeTransition,
+  cleanupWebAudioForAudio,
+  getGlobalVolume,
+  initializeWebAudioForAudio,
+  restoreVolumeLevels
+} from './volume';
 import { setupAudioErrorHandling, handleAudioError } from './errors';
 
 /**
@@ -207,7 +214,7 @@ const checkQueueLimit = (
 
       if (globalQueueConfig.showQueueWarnings) {
         // eslint-disable-next-line no-console
-        console.info(`Dropped oldest queued item to make room for new audio`);
+        console.warn(`Dropped oldest queued item to make room for new audio`);
       }
       return true;
     }
@@ -282,6 +289,9 @@ export const queueAudio = async (
   setupAudioErrorHandling(audio, channelNumber, validatedUrl, async (error: Error) => {
     await handleAudioError(audio, channelNumber, validatedUrl, error);
   });
+
+  // Initialize Web Audio API support if needed
+  await initializeWebAudioForAudio(audio, channelNumber);
 
   // Apply options if provided
   if (options) {
@@ -363,9 +373,10 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
 
   const currentAudio: HTMLAudioElement = channel.queue[0];
 
-  // Apply channel volume if not already set
+  // Apply channel volume with global volume multiplier if not already set
   if (currentAudio.volume === 1.0 && channel.volume !== undefined) {
-    currentAudio.volume = channel.volume;
+    const globalVolume: number = getGlobalVolume();
+    currentAudio.volume = channel.volume * globalVolume;
   }
 
   setupProgressTracking(currentAudio, channelNumber, audioChannels);
@@ -440,6 +451,7 @@ export const playAudioQueue = async (channelNumber: number): Promise<void> => {
         // For non-looping audio, remove from queue and play next
         currentAudio.pause();
         cleanupProgressTracking(currentAudio, channelNumber, audioChannels);
+        cleanupWebAudioForAudio(currentAudio, channelNumber);
         channel.queue.shift();
         channel.isPaused = false; // Reset pause state
 

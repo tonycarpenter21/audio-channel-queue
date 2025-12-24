@@ -18,6 +18,7 @@ const info_1 = require("./info");
 const utils_1 = require("./utils");
 const events_1 = require("./events");
 const volume_1 = require("./volume");
+const web_audio_1 = require("./web-audio");
 /**
  * Gets the current volume for a channel, accounting for synchronous state
  * @param channelNumber - The channel number
@@ -38,7 +39,15 @@ const setChannelVolumeSync = (channelNumber, volume) => {
     if (channel) {
         channel.volume = volume;
         if (channel.queue.length > 0) {
-            channel.queue[0].volume = volume;
+            const audio = channel.queue[0];
+            if (channel.webAudioNodes) {
+                const nodes = channel.webAudioNodes.get(audio);
+                if (nodes) {
+                    // Update the gain node when Web Audio is active
+                    (0, web_audio_1.setWebAudioVolume)(nodes.gainNode, volume);
+                }
+            }
+            audio.volume = volume;
         }
     }
 };
@@ -58,12 +67,14 @@ const setChannelVolumeSync = (channelNumber, volume) => {
 const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (fadeType = types_1.FadeType.Gentle, channelNumber = 0, duration) {
     var _a, _b, _c;
     const channel = info_1.audioChannels[channelNumber];
-    if (!channel || channel.queue.length === 0)
+    if (!channel || channel.queue.length === 0) {
         return;
+    }
     const currentAudio = channel.queue[0];
     // Don't pause if already paused or ended
-    if (currentAudio.paused || currentAudio.ended)
+    if (currentAudio.paused || currentAudio.ended) {
         return;
+    }
     const config = (0, volume_1.getFadeConfig)(fadeType);
     const effectiveDuration = duration !== null && duration !== void 0 ? duration : config.duration;
     // Race condition fix: Use existing fadeState originalVolume if already transitioning,
@@ -100,9 +111,11 @@ const pauseWithFade = (...args_1) => __awaiter(void 0, [...args_1], void 0, func
     }
     // Fade to 0 with pause curve, then pause
     yield (0, volume_1.transitionVolume)(channelNumber, 0, effectiveDuration, config.pauseCurve);
+    // Pause the audio
     yield (0, exports.pauseChannel)(channelNumber);
-    // Reset volume to original for resume (synchronously to avoid state issues)
-    setChannelVolumeSync(channelNumber, originalVolume);
+    // Restore channel.volume for resume, but DON'T restore gain node to prevent blip
+    // The gain node will be restored during the resume fade
+    channel.volume = originalVolume;
     // Mark transition as complete
     if (channel.fadeState) {
         channel.fadeState.isTransitioning = false;
@@ -125,8 +138,10 @@ exports.pauseWithFade = pauseWithFade;
  */
 const resumeWithFade = (fadeType_1, ...args_1) => __awaiter(void 0, [fadeType_1, ...args_1], void 0, function* (fadeType, channelNumber = 0, duration) {
     const channel = info_1.audioChannels[channelNumber];
-    if (!channel || channel.queue.length === 0)
+    if (!channel || channel.queue.length === 0) {
         return;
+    }
+    const audio = channel.queue[0];
     const fadeState = channel.fadeState;
     if (!(fadeState === null || fadeState === void 0 ? void 0 : fadeState.isPaused)) {
         // Fall back to regular resume if no fade state
@@ -160,8 +175,19 @@ const resumeWithFade = (fadeType_1, ...args_1) => __awaiter(void 0, [fadeType_1,
     const targetVolume = fadeState.originalVolume > 0 ? fadeState.originalVolume : 1.0;
     // Mark as transitioning to prevent volume capture during rapid toggles
     fadeState.isTransitioning = true;
-    // Set volume to 0, resume, then fade to original with resume curve
-    setChannelVolumeSync(channelNumber, 0);
+    // Ensure gain node is at 0 before resuming (should already be from pause)
+    // Don't touch audio.volume when Web Audio is active - iOS may reset it
+    // Don't touch channel.volume - it should stay at originalVolume
+    if (channel.webAudioNodes) {
+        const nodes = channel.webAudioNodes.get(audio);
+        if (nodes) {
+            (0, web_audio_1.setWebAudioVolume)(nodes.gainNode, 0);
+        }
+    }
+    else {
+        // Fallback for non-Web Audio: set audio.volume directly
+        audio.volume = 0;
+    }
     yield (0, exports.resumeChannel)(channelNumber);
     // Use the stored original volume, not current volume, to prevent race conditions
     yield (0, volume_1.transitionVolume)(channelNumber, targetVolume, effectiveDuration, config.resumeCurve);
