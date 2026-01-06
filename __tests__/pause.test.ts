@@ -1357,7 +1357,6 @@ describe('Race Condition Handling', () => {
       await new Promise((resolve) => setTimeout(resolve, 900));
 
       // The gain node MUST be updated to 1.0
-
       expect(mockGainNode.gain.value).toBeCloseTo(1.0, 1);
     });
   });

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.0] - 2026-01-06
+
+### Added
+- **Global Volume Control**: New functionality to scale all channel volumes globally while preserving individual channel volume ratios
+  - Allows master volume control while maintaining relative volume differences between channels
+  - Useful for application-wide volume settings and accessibility controls
+
+### Fixed
+- **Web Audio API Compatibility**: Fixed volume control issues on iOS devices
+  - Volume changes and transitions now work properly on iOS browsers
+  - Implemented fallback mechanisms for browsers with limited Web Audio API support
+
 ## [1.12.0] - 2025-01-16
 
 ### Changed - Code Quality & Type Safety Improvements
