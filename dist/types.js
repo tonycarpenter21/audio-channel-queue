@@ -1,6 +1,6 @@
 "use strict";
 /**
- * @fileoverview Type definitions for the audio-channel-queue package
+ * @fileoverview Type definitions for the audioq package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TimerType = exports.FadeType = exports.EasingType = exports.AudioErrorType = exports.GLOBAL_PROGRESS_KEY = exports.MAX_CHANNELS = void 0;

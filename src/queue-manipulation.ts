@@ -1,5 +1,5 @@
 /**
- * @fileoverview Queue manipulation functions for the audio-channel-queue package
+ * @fileoverview Queue manipulation functions for the audioq package
  * Provides advanced queue management including item removal, reordering, and clearing
  */
 

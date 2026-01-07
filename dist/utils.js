@@ -1,6 +1,6 @@
 "use strict";
 /**
- * @fileoverview Utility functions for the audio-channel-queue package
+ * @fileoverview Utility functions for the audioq package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cleanWebpackFilename = exports.createQueueSnapshot = exports.getAudioInfoFromElement = exports.extractFileName = exports.sanitizeForDisplay = exports.validateAudioUrl = void 0;

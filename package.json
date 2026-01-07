@@ -1,6 +1,6 @@
 {
-  "name": "audio-channel-queue",
-  "version": "1.13.1",
+  "name": "audioq",
+  "version": "2.0.0",
   "description": "Allows you to queue audio files to different playback channels.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tonycarpenter21/audio-channel-queue.git"
+    "url": "git+https://github.com/tonycarpenter21/audioq.git"
   },
   "keywords": [
     "audio",
@@ -43,9 +43,9 @@
   "author": "Tony Carpenter",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/tonycarpenter21/audio-queue-package/issues"
+    "url": "https://github.com/tonycarpenter21/audioq/issues"
   },
-  "homepage": "https://github.com/tonycarpenter21/audio-queue-package#readme",
+  "homepage": "https://github.com/tonycarpenter21/audioq#readme",
   "engines": {
     "node": ">=14.0.0"
   },

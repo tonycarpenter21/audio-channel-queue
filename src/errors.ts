@@ -1,5 +1,5 @@
 /**
- * @fileoverview Error handling, retry logic, and recovery mechanisms for the audio-channel-queue package
+ * @fileoverview Error handling, retry logic, and recovery mechanisms for the audioq package
  */
 
 import {

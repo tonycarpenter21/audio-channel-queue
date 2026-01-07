@@ -1,5 +1,5 @@
 /**
- * @fileoverview Audio information and progress tracking functions for the audio-channel-queue package
+ * @fileoverview Audio information and progress tracking functions for the audioq package
  */
 
 import {

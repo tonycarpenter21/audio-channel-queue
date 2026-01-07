@@ -1,5 +1,5 @@
 /**
- * @fileoverview Pause and resume management functions for the audio-channel-queue package
+ * @fileoverview Pause and resume management functions for the audioq package
  */
 import { FadeType } from './types';
 /**

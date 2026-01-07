@@ -1,6 +1,6 @@
 "use strict";
 /**
- * @fileoverview Error handling, retry logic, and recovery mechanisms for the audio-channel-queue package
+ * @fileoverview Error handling, retry logic, and recovery mechanisms for the audioq package
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2025-01-07
+
+### Changed
+- **BREAKING**: Package renamed from `audio-channel-queue` to `audioq`
+  - **NPM package name**: Install with `npm install audioq` instead of `npm install audio-channel-queue`
+  - **No API changes**: All functionality remains identical to version 1.13.1
+  - **No code changes required**: Your existing imports and function calls work exactly the same
+  - **Migration**: Simply update your `package.json` dependency from `audio-channel-queue` to `audioq`
+  - **Old package deprecated**: The `audio-channel-queue` package will show a deprecation notice on npm
+
+### Reason for Rename
+- Shorter, more memorable package name
+- Easier to search for on NPM
+- Easier to type and reference in code
+
 ## [1.13.0] - 2026-01-06
 
 ### Added
@@ -24,9 +39,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **AudioErrorType Enum**: New enum for better error type categorization and type safety
-
-### Removed
-- **Removed Unused Property**: Removed optional `fallbackUrls` property from `RetryConfig` interface
 
 ### BREAKING CHANGES
 - **Removed deprecated `priority` property**: The `priority` property has been removed from `AudioQueueOptions` interface

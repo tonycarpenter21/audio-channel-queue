@@ -1,5 +1,5 @@
 /**
- * @fileoverview Type definitions for the audio-channel-queue package
+ * @fileoverview Type definitions for the audioq package
  */
 /**
  * Maximum number of audio channels allowed to prevent memory exhaustion

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Core queue management functions for the audio-channel-queue package
+ * @fileoverview Core queue management functions for the audioq package
  */
 import { AudioQueueOptions, QueueConfig } from './types';
 /**

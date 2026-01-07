@@ -1,5 +1,5 @@
 /**
- * @fileoverview Volume management functions for the audio-channel-queue package
+ * @fileoverview Volume management functions for the audioq package
  */
 
 import {

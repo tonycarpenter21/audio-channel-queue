@@ -1,6 +1,6 @@
 "use strict";
 /**
- * @fileoverview Event handling and emission for the audio-channel-queue package
+ * @fileoverview Event handling and emission for the audioq package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cleanupProgressTracking = exports.setupProgressTracking = exports.emitAudioResume = exports.emitAudioPause = exports.emitAudioComplete = exports.emitAudioStart = exports.emitQueueChange = void 0;

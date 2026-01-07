@@ -1,6 +1,6 @@
 "use strict";
 /**
- * @fileoverview Audio information and progress tracking functions for the audio-channel-queue package
+ * @fileoverview Audio information and progress tracking functions for the audioq package
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.offAudioComplete = exports.offAudioStart = exports.offAudioResume = exports.offAudioPause = exports.onAudioResume = exports.onAudioPause = exports.onAudioComplete = exports.onAudioStart = exports.offQueueChange = exports.onQueueChange = exports.onAudioProgress = exports.getQueueSnapshot = exports.getAllChannelsInfo = exports.getCurrentAudioInfo = exports.audioChannels = exports.getNonWhitelistedChannelProperties = exports.getWhitelistedChannelProperties = void 0;

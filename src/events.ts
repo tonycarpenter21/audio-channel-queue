@@ -1,5 +1,5 @@
 /**
- * @fileoverview Event handling and emission for the audio-channel-queue package
+ * @fileoverview Event handling and emission for the audioq package
  */
 
 import {

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Test setup and shared mocks for audio-channel-queue tests
+ * @fileoverview Test setup and shared mocks for audioq tests
  */
 
 // Set longer timeout for audio tests

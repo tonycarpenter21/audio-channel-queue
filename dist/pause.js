@@ -1,6 +1,6 @@
 "use strict";
 /**
- * @fileoverview Pause and resume management functions for the audio-channel-queue package
+ * @fileoverview Pause and resume management functions for the audioq package
  */
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }

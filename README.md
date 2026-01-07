@@ -1,4 +1,4 @@
-# Audio Channel Queue
+# AudioQ
 The purpose of this package is to help manage the playback of audio files. 
 
 🎵 [Demo](https://tonycarpenter21.github.io/audio-queue-demo/queue-management)
@@ -20,11 +20,11 @@ The purpose of this package is to help manage the playback of audio files.
 
 This package offers TypeScript support, has zero dependencies, and is released under the MIT license.
 
-To preview this package and see how it works with visualized code examples, check out the demo that can be found here: [Audio Channel Queue Demo](https://tonycarpenter21.github.io/audio-queue-demo/). (A link to the demo repo can be found here: [Audio Channel Queue Demo Repo](https://github.com/tonycarpenter21/audio-queue-demo).)
+To preview this package and see how it works with visualized code examples, check out the demo that can be found here: [AudioQ Demo](https://tonycarpenter21.github.io/audio-queue-demo/). (A link to the demo repo can be found here: [AudioQ Demo Repo](https://github.com/tonycarpenter21/audio-queue-demo).)
 
-NPM package can be found [here](https://www.npmjs.com/package/audio-channel-queue).
+NPM package can be found [here](https://www.npmjs.com/package/audioq).
 
-GitHub Repo can be found [here](https://github.com/tonycarpenter21/audio-channel-queue).
+GitHub Repo can be found [here](https://github.com/tonycarpenter21/audioq).
 
 Documentation can be found [here](https://tonycarpenter21.github.io/audio-queue-docs/)
 
@@ -66,8 +66,8 @@ src/
 
 ## How To Install This Package:
 Install this package by running either of these commands (typescript packages are included automatically):
-- For npm run `npm install audio-channel-queue`
-- For yarn run `yarn add audio-channel-queue`
+- For npm run `npm install audioq`
+- For yarn run `yarn add audioq`
 
 ## Basic Queue Management Functions:
 

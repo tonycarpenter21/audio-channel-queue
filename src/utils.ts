@@ -1,5 +1,5 @@
 /**
- * @fileoverview Utility functions for the audio-channel-queue package
+ * @fileoverview Utility functions for the audioq package
  */
 
 import { AudioInfo, QueueSnapshot, ExtendedAudioQueueChannel, QueueItem } from './types';

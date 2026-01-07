@@ -1,5 +1,5 @@
 /**
- * @fileoverview Main entry point for the audio-channel-queue package
+ * @fileoverview Main entry point for the audioq package
  * Exports all public functions and types for audio queue management, pause/resume controls,
  * volume management with ducking, progress tracking, and comprehensive event system
  */
